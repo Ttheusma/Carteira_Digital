@@ -22,7 +22,8 @@ services:
       - frontend_net
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+          condition: service_healthy
 
   backend:
     build: 
@@ -33,6 +34,11 @@ services:
       - SPRING_DATASOURCE_USERNAME=${DB_APP_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_APP_PASSWORD}
       - SPRING_PROFILES_ACTIVE=prod
+      - APP_TAXA_SAQUE=${TAXA_SAQUE_PERCENTUAL}
+      - APP_TAXA_CONVERSAO=${TAXA_CONVERSAO_PERCENTUAL}
+      - APP_TAXA_TRANSFERENCIA=${TAXA_TRANSFERENCIA_PERCENTUAL}
+      - APP_PRIVATE_KEY_SIZE=${PRIVATE_KEY_SIZE}
+      - APP_PUBLIC_KEY_SIZE=${PUBLIC_KEY_SIZE}
     networks:
       - frontend_net
       - backend_net
@@ -40,6 +46,20 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 512m
 
   database: 
     image: postgres:15-alpine
@@ -52,7 +72,8 @@ services:
       - DB_APP_PASSWORD=${DB_APP_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./database/01-tabelas.sql:/docker-entrypoint-initdb.d/01-tabelas.sql:ro
+      - ./database/02-setup-secops.sh:/docker-entrypoint-initdb.d/02-setup-secops.sh:ro
     networks:
       - backend_net
     restart: unless-stopped
@@ -61,3 +82,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID

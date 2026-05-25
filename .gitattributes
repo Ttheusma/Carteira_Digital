@@ -1,0 +1,3 @@
+# Força o padrão Linux (LF) em scripts e arquivos de banco para evitar bugs no Docker
+*.sh text eol=lf
+*.sql text eol=lf
