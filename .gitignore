@@ -1,0 +1,11 @@
+.env
+.env.*
+
+backend/target/
+backend/bin/
+*.jar
+*.war
+
+.vscode/
+.idea/
+.DS_Store

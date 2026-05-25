@@ -1,0 +1,63 @@
+version: '3.8'
+
+networks: 
+  frontend_net:
+    driver: bridge
+    internal: false
+  backend_net:
+    driver: bridge
+    internal: true
+  
+volumes:
+  postgres_data: 
+
+services:
+  frontend:
+    build: 
+      context: ./frontend
+    container_name: carteira_frontend
+    ports:
+      - "${FRONTEND_PUBLISH_PORT}:8080"
+    networks:
+      - frontend_net
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  backend:
+    build: 
+      context: ./backend
+    container_name: carteira_backend
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${DB_APP_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_APP_PASSWORD}
+      - SPRING_PROFILES_ACTIVE=prod
+    networks:
+      - frontend_net
+      - backend_net
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database: 
+    image: postgres:15-alpine
+    container_name: carteira_database
+    environment: 
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_ROOT_USER} # Admin do banco usado apenas na inicialização
+      - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD} 
+      - DB_APP_USER=${DB_APP_USER} # Injetado para uso no init.sql se necessário
+      - DB_APP_PASSWORD=${DB_APP_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_ROOT_USER}", "-d", "${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
