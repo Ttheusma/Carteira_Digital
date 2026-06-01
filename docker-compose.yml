@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
     depends_on:
       backend:
-          condition: service_healthy
+        condition: service_healthy
 
   backend:
     build: 
@@ -66,9 +66,9 @@ services:
     container_name: carteira_database
     environment: 
       - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_ROOT_USER} # Admin do banco usado apenas na inicialização
+      - POSTGRES_USER=${DB_ROOT_USER}
       - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD} 
-      - DB_APP_USER=${DB_APP_USER} # Injetado para uso no init.sql se necessário
+      - DB_APP_USER=${DB_APP_USER}
       - DB_APP_PASSWORD=${DB_APP_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -90,3 +90,5 @@ services:
       - CHOWN
       - SETUID
       - SETGID
+      - FOWNER         
+      - DAC_OVERRIDE

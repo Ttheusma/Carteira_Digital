@@ -13,7 +13,7 @@ public class Moeda {
 
     @Id
     @Column(name = "id_moeda", nullable = false)
-    private Integer idMoeda;
+    private Short idMoeda;
     @Column(name = "codigo", length = 10, nullable = false, unique = true)
     private String codigo;
     @Column(name = "nome", length = 50, nullable = false)
@@ -23,18 +23,18 @@ public class Moeda {
 
     public Moeda() {
     }
-    public Moeda(Integer idMoeda, String codigo, String nome, String tipo) {
+    public Moeda(Short idMoeda, String codigo, String nome, String tipo) {
         this.idMoeda = idMoeda;
         this.codigo = codigo;
         this.nome = nome;
         this.tipo = tipo;
     }
 
-    public Integer getIdMoeda() {
+    public Short getIdMoeda() {
         return idMoeda;
     }
 
-    public void setIdMoeda(Integer idMoeda) {
+    public void setIdMoeda(Short idMoeda) {
         this.idMoeda = idMoeda;
     }
 

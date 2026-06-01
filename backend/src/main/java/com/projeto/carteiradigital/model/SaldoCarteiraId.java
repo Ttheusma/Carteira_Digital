@@ -6,7 +6,7 @@ import java.util.Objects;
 
 public class SaldoCarteiraId implements Serializable {
     private String carteira;
-    private Integer moeda;
+    private Short moeda;
 
     public SaldoCarteiraId() {
     }
