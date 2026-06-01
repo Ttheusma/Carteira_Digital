@@ -22,6 +22,18 @@ CREATE TABLE IF NOT EXISTS SALDO_CARTEIRA (
     CONSTRAINT fk_saldo_moeda FOREIGN KEY (id_moeda) REFERENCES MOEDA(id_moeda) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS TRANSACAO (
+    id_transacao BIGSERIAL PRIMARY KEY,
+    endereco_carteira VARCHAR(255) NOT NULL,
+    id_moeda SMALLINT NOT NULL,
+    tipo_operacao VARCHAR(50) NOT NULL,
+    valor DECIMAL(19, 4) NOT NULL,
+    taxa_cobrada DECIMAL(19, 4) NOT NULL,
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_transacao_carteira FOREIGN KEY (endereco_carteira) REFERENCES CARTEIRA(endereco_carteira),
+    CONSTRAINT fk_transacao_moeda FOREIGN KEY (id_moeda) REFERENCES MOEDA(id_moeda)
+);
+
 CREATE TABLE IF NOT EXISTS DEPOSITO_SAQUE (
     id_movimento BIGSERIAL PRIMARY KEY,
     endereco_carteira VARCHAR(255) NOT NULL,
