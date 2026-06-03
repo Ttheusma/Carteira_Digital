@@ -30,9 +30,12 @@ services:
       context: ./backend
     container_name: carteira_backend
     ports:                  
-      - "8080:8080"         
+      - "8080:8080"  
+    env_file:             
+      - .env       
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${DB_NAME}
+      - APP_TAXA_SAQUE=${TAXA_SAQUE_PERCENTUAL}
       - SPRING_DATASOURCE_USERNAME=${DB_APP_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_APP_PASSWORD}
       - SPRING_PROFILES_ACTIVE=prod
