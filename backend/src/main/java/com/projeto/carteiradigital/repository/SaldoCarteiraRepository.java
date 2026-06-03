@@ -16,4 +16,5 @@ public interface SaldoCarteiraRepository extends JpaRepository<SaldoCarteira, Sa
 
     
     Optional<SaldoCarteira> findByCarteira_EnderecoCarteiraAndMoeda_Codigo(String enderecoCarteira, String codigo);
+    
 }
