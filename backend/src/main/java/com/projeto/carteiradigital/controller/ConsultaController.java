@@ -1,18 +1,15 @@
 package com.projeto.carteiradigital.controller;
 
 import com.projeto.carteiradigital.model.SaldoCarteira;
-import com.projeto.carteiradigital.model.Transacao;
 import com.projeto.carteiradigital.service.ConsultaService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/carteiras/{endereco}")
+@RequestMapping("/api/v1/carteiras")
 public class ConsultaController {
 
     private final ConsultaService consultaService;
@@ -21,13 +18,13 @@ public class ConsultaController {
         this.consultaService = consultaService;
     }
 
-    @GetMapping("/saldos")
-    public ResponseEntity<List<SaldoCarteira>> obterSaldos(@PathVariable String endereco) {
-        return ResponseEntity.ok(consultaService.consultarSaldos(endereco));
+    @GetMapping("/{enderecoCarteira}/saldos")
+    public ResponseEntity<List<SaldoCarteira>> consultarSaldos(@PathVariable String enderecoCarteira) {
+        return ResponseEntity.ok(consultaService.listarSaldos(enderecoCarteira));
     }
 
-    @GetMapping("/extrato")
-    public ResponseEntity<List<Transacao>> obterExtrato(@PathVariable String endereco) {
-        return ResponseEntity.ok(consultaService.consultarExtrato(endereco));
+    @GetMapping("/{enderecoCarteira}/extrato")
+    public ResponseEntity<List<Map<String, Object>>> consultarExtrato(@PathVariable String enderecoCarteira) {
+        return ResponseEntity.ok(consultaService.gerarExtrato(enderecoCarteira));
     }
 }

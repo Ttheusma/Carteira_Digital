@@ -3,9 +3,8 @@ package com.projeto.carteiradigital.service;
 import com.projeto.carteiradigital.model.Carteira;
 import com.projeto.carteiradigital.repository.CarteiraRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import java.util.Optional;
 
 @Service
 public class CarteiraService {
@@ -16,27 +15,18 @@ public class CarteiraService {
         this.carteiraRepository = carteiraRepository;
     }
 
-    /**
-     * @Transactional garante o conceito ACID do banco. 
-     * Se der erro no meio do método, ele faz o Rollback automático de tudo.
-     */
-    @Transactional
-    public Carteira criarNovaCarteira(String hashChavePrivada) {
-      
-        if (hashChavePrivada == null || hashChavePrivada.trim().isEmpty()) {
-            throw new IllegalArgumentException("Falha de Segurança: O hash da chave privada é obrigatório.");
-        }
-
-       
-        String novoEndereco = UUID.randomUUID().toString();
-
-      
-        Carteira novaCarteira = new Carteira(novoEndereco, hashChavePrivada, "ATIVA");
-
-        
+    // 1. Método usado pelo CarteiraController (A sua versão nova)
+    public Carteira criarCarteira(String enderecoCarteira, String hashChavePrivada) {
+        Carteira novaCarteira = new Carteira(enderecoCarteira, hashChavePrivada, "ATIVA");
         return carteiraRepository.save(novaCarteira);
     }
-    
+
+    // 2. Método usado pelo TransacaoController (A sua versão nova)
+    public Optional<Carteira> buscarPorEndereco(String enderecoCarteira) {
+        return carteiraRepository.findById(enderecoCarteira);
+    }
+
+    // 3. MÉTODO CRÍTICO usado pelos outros Services (Para consertar a compilação)
     public Carteira buscarCarteiraSegura(String endereco) {
         return carteiraRepository.findById(endereco)
                 .orElseThrow(() -> new IllegalArgumentException("Carteira não encontrada para o endereço: " + endereco));

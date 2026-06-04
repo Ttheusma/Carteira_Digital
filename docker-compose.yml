@@ -1,12 +1,15 @@
 version: '3.8'
 
-networks: 
+networks:
   frontend_net:
     driver: bridge
     internal: false
   backend_net:
     driver: bridge
     internal: true
+  db_admin_net:
+    driver: bridge
+    internal: false
   
 volumes:
   postgres_data: 
@@ -35,15 +38,13 @@ services:
       - .env       
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${DB_NAME}
-      - APP_TAXA_SAQUE=${TAXA_SAQUE_PERCENTUAL}
       - SPRING_DATASOURCE_USERNAME=${DB_APP_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_APP_PASSWORD}
       - SPRING_PROFILES_ACTIVE=prod
-      - APP_TAXA_SAQUE=${TAXA_SAQUE_PERCENTUAL}
-      - APP_TAXA_CONVERSAO=${TAXA_CONVERSAO_PERCENTUAL}
-      - APP_TAXA_TRANSFERENCIA=${TAXA_TRANSFERENCIA_PERCENTUAL}
-      - APP_PRIVATE_KEY_SIZE=${PRIVATE_KEY_SIZE}
-      - APP_PUBLIC_KEY_SIZE=${PUBLIC_KEY_SIZE}
+      # As variáveis abaixo já são expostas via env_file, mas ficam explícitas para clareza
+      - TAXA_SAQUE_PERCENTUAL=${TAXA_SAQUE_PERCENTUAL}
+      - TAXA_CONVERSAO_PERCENTUAL=${TAXA_CONVERSAO_PERCENTUAL}
+      - TAXA_TRANSFERENCIA_PERCENTUAL=${TAXA_TRANSFERENCIA_PERCENTUAL}
     networks:
       - frontend_net
       - backend_net
@@ -66,13 +67,17 @@ services:
       - /tmp
     mem_limit: 512m
 
-  database: 
+  database:
     image: postgres:15-alpine
     container_name: carteira_database
-    environment: 
+    ports:
+      # Porta 5433 no host → evita conflito com PostgreSQL local (porta 5432)
+      - "5433:5432"
+    environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_ROOT_USER}
-      - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD} 
+      - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD}
+      - POSTGRES_HOST_AUTH_METHOD=md5
       - DB_APP_USER=${DB_APP_USER}
       - DB_APP_PASSWORD=${DB_APP_PASSWORD}
     volumes:
@@ -81,6 +86,7 @@ services:
       - ./database/02-setup-secops.sh:/docker-entrypoint-initdb.d/02-setup-secops.sh:ro
     networks:
       - backend_net
+      - db_admin_net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${DB_ROOT_USER}", "-d", "${DB_NAME}"]

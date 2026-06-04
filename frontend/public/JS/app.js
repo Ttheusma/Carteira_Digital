@@ -47,9 +47,7 @@ function fecharModal(idModal) {
 async function criarNovaCarteira() {
     try {
         const resposta = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ hashChavePrivada: "senha-padrao-front" }) 
+            method: "POST"
         });
 
         if (!resposta.ok) throw new Error("Falha ao gerar nova carteira no servidor.");
@@ -57,7 +55,8 @@ async function criarNovaCarteira() {
         const dados = await resposta.json();
         carteiraAtual = dados.enderecoCarteira;
         
-        alert(`Sucesso! Sua nova carteira foi gerada.\nGuarde seu UUID em um local seguro:\n\n${carteiraAtual}`);
+        // Exibe o Alerta Crítico exigido pela arquitetura de Segurança
+        alert(`${dados.alerta}\n\nSEU UUID (Acesso):\n${dados.enderecoCarteira}\n\nSUA CHAVE PRIVADA (Assinatura):\n${dados.chavePrivada}`);
         carregarDashboard();
 
     } catch (erro) {
@@ -109,7 +108,7 @@ function renderizarSaldos(listaSaldos) {
     listaSaldos.forEach(item => {
         container.innerHTML += `
             <div class="card-saldo">
-                <h4>Saldo em ${item.moeda.codigo}</h4>
+                <h4>Saldo em ${item.idMoeda === 1 ? 'BTC' : item.idMoeda === 2 ? 'ETH' : item.idMoeda === 3 ? 'SOL' : item.idMoeda === 4 ? 'USD' : 'BRL'}</h4>
                 <p class="valor">${item.saldo}</p>
             </div>
         `;
@@ -127,7 +126,7 @@ function renderizarExtrato(listaExtrato) {
     }
 
     listaExtrato.forEach((tx, index) => {
-        const dataFormatada = new Date(tx.dataHora).toLocaleString('pt-BR');
+        const dataFormatada = new Date(tx.dataHora).toLocaleString('pt-PT');
         const operacaoLimpa = tx.tipoOperacao.replace('_', ' ');
 
         tbody.innerHTML += `
@@ -146,7 +145,7 @@ function renderizarExtrato(listaExtrato) {
 // --- RENDERIZAÇÃO DO COMPROVANTE ---
 function abrirRecibo(index) {
     const tx = extratoAtual[index]; 
-    const dataFormatada = new Date(tx.dataHora).toLocaleString('pt-BR');
+    const dataFormatada = new Date(tx.dataHora).toLocaleString('pt-PT');
     const operacaoLimpa = tx.tipoOperacao.replace('_', ' ');
     const corpoRecibo = document.getElementById("recibo-detalhes");
 
@@ -177,7 +176,7 @@ async function dispararRequisicao(endpoint, payload) {
 
     if (!resposta.ok) {
         const erroJson = await resposta.json();
-        throw new Error(erroJson.erro || "Falha na regra de negócio (SecOps)");
+        throw new Error(erroJson.erro || erroJson.message || "Assinatura Rejeitada ou Falha na regra de negócio.");
     }
     return await resposta.json();
 }
@@ -200,9 +199,10 @@ async function realizarSaque(event) {
     event.preventDefault();
     const valor = parseFloat(document.getElementById("saq-valor").value);
     const moeda = document.getElementById("saq-moeda").value;
+    const chave = document.getElementById("saq-chave").value.trim();
 
     try {
-        await dispararRequisicao("saques", { codigoMoeda: moeda, valor: valor });
+        await dispararRequisicao("saques", { codigoMoeda: moeda, valor: valor, chavePrivada: chave });
         fecharModal('modal-saque');
         carregarDashboard();
     } catch (erro) {
@@ -215,12 +215,14 @@ async function realizarTransferencia(event) {
     const destino = document.getElementById("transf-destino").value.trim();
     const valor = parseFloat(document.getElementById("transf-valor").value);
     const moeda = document.getElementById("transf-moeda").value;
+    const chave = document.getElementById("transf-chave").value.trim();
 
     try {
         await dispararRequisicao("transferencias", { 
             enderecoDestino: destino, 
             codigoMoeda: moeda, 
-            valor: valor 
+            valor: valor,
+            chavePrivada: chave 
         });
         fecharModal('modal-transferencia');
         carregarDashboard();
@@ -234,7 +236,7 @@ async function realizarCambio(event) {
     const valor = parseFloat(document.getElementById("cambio-valor").value);
     const origem = document.getElementById("cambio-origem").value;
     const destino = document.getElementById("cambio-destino").value;
-    const cotacao = parseFloat(document.getElementById("cambio-cotacao").value);
+    const chave = document.getElementById("cambio-chave").value.trim();
 
     if(origem === destino) return alert("As moedas de origem e destino devem ser diferentes.");
 
@@ -243,41 +245,11 @@ async function realizarCambio(event) {
             moedaOrigem: origem, 
             moedaDestino: destino, 
             valorOrigem: valor,
-            cotacao: cotacao
+            chavePrivada: chave
         });
         fecharModal('modal-cambio');
         carregarDashboard();
     } catch (erro) {
         alert("Erro no Câmbio: " + erro.message);
-    }
-}
-
-// --- SIMULADOR DE COTAÇÕES (ORÁCULO COM MATRIZ CRUZADA) ---
-function simularCotacao() {
-    const origem = document.getElementById("cambio-origem").value;
-    const destino = document.getElementById("cambio-destino").value;
-    const campoCotacao = document.getElementById("cambio-cotacao");
-
-    if (!origem || !destino) return;
-
-    if (origem === destino) {
-        campoCotacao.value = "";
-        return alert("As moedas devem ser diferentes!");
-    }
-
-    const baseUSD = {
-        "USD": 1.00,
-        "BRL": 5.00,       
-        "EUR": 0.91,       
-        "GBP": 0.78,       
-        "BTC": 0.00001538  
-    };
-
-    const taxaCruzada = baseUSD[destino] / baseUSD[origem];
-
-    if (destino === "BTC" || origem === "BTC") {
-        campoCotacao.value = taxaCruzada.toFixed(8); 
-    } else {
-        campoCotacao.value = taxaCruzada.toFixed(4); 
     }
 }

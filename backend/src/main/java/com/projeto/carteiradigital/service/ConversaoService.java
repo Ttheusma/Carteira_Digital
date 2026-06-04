@@ -1,12 +1,13 @@
 package com.projeto.carteiradigital.service;
 
-import com.projeto.carteiradigital.model.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.projeto.carteiradigital.model.Conversao;
+import com.projeto.carteiradigital.model.Moeda;
 import com.projeto.carteiradigital.repository.ConversaoRepository;
-import com.projeto.carteiradigital.repository.SaldoCarteiraRepository;
-import com.projeto.carteiradigital.repository.TransacaoRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -14,84 +15,78 @@ import java.math.RoundingMode;
 @Service
 public class ConversaoService {
 
-    private final ConversaoRepository conversaoRepository;
-    private final TransacaoRepository transacaoRepository;
-    private final SaldoCarteiraRepository saldoCarteiraRepository;
-    private final CarteiraService carteiraService;
-    private final MoedaService moedaService;
+    private static final int ESCALA = 8;
 
-    // Blindagem de SecOps: Taxa padrão de 2% (0.02) caso o Docker falhe
-    @Value("${APP_TAXA_CONVERSAO:0.02}")
+    private final ConversaoRepository conversaoRepository;
+    private final SaldoCarteiraService saldoCarteiraService;
+    private final MoedaService moedaService;
+    private final RestTemplate restTemplate;
+
+    @Value("${TAXA_CONVERSAO_PERCENTUAL:0.02}")
     private BigDecimal taxaConversaoPercentual;
 
     public ConversaoService(ConversaoRepository conversaoRepository,
-                            TransacaoRepository transacaoRepository,
-                            SaldoCarteiraRepository saldoCarteiraRepository,
-                            CarteiraService carteiraService,
+                            SaldoCarteiraService saldoCarteiraService,
                             MoedaService moedaService) {
         this.conversaoRepository = conversaoRepository;
-        this.transacaoRepository = transacaoRepository;
-        this.saldoCarteiraRepository = saldoCarteiraRepository;
-        this.carteiraService = carteiraService;
+        this.saldoCarteiraService = saldoCarteiraService;
         this.moedaService = moedaService;
+        this.restTemplate = new RestTemplate();
+    }
+
+    private BigDecimal obterCotacaoCoinbase(String moedaOrigem, String moedaDestino) {
+        String url = String.format("https://api.coinbase.com/v2/prices/%s-%s/spot", moedaOrigem, moedaDestino);
+        try {
+            JsonNode response = restTemplate.getForObject(url, JsonNode.class);
+            if (response != null && response.has("data") && response.get("data").has("amount")) {
+                return new BigDecimal(response.get("data").get("amount").asText())
+                        .setScale(ESCALA, RoundingMode.HALF_UP);
+            }
+            throw new RuntimeException("Falha ao analisar o JSON da Coinbase.");
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao comunicar com a API da Coinbase: " + e.getMessage(), e);
+        }
     }
 
     @Transactional
-    public Conversao converter(String endereco, String codigoOrigem, String codigoDestino, BigDecimal valor, BigDecimal cotacao) {
-        
-        if (valor.compareTo(BigDecimal.ZERO) <= 0 || cotacao.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Alerta SecOps: Valor e cotação devem ser maiores que zero.");
-        }
-        if (codigoOrigem.equalsIgnoreCase(codigoDestino)) {
-            throw new IllegalArgumentException("Alerta SecOps: As moedas de origem e destino devem ser diferentes.");
-        }
+    public void realizarConversao(String enderecoCarteira,
+                                   String codigoMoedaOrigem,
+                                   String codigoMoedaDestino,
+                                   BigDecimal valorOrigem) {
 
-        
-        Carteira carteira = carteiraService.buscarCarteiraSegura(endereco);
-        Moeda moedaOrigem = moedaService.buscarPorCodigoSeguro(codigoOrigem);
-        Moeda moedaDestino = moedaService.buscarPorCodigoSeguro(codigoDestino);
+        Moeda moedaOrigem = moedaService.buscarPorCodigo(codigoMoedaOrigem)
+                .orElseThrow(() -> new IllegalArgumentException("Moeda de origem não suportada: " + codigoMoedaOrigem));
+        Moeda moedaDestino = moedaService.buscarPorCodigo(codigoMoedaDestino)
+                .orElseThrow(() -> new IllegalArgumentException("Moeda de destino não suportada: " + codigoMoedaDestino));
 
-        SaldoCarteira saldoOrigem = saldoCarteiraRepository
-                .findByCarteira_EnderecoCarteiraAndMoeda_Codigo(endereco, codigoOrigem)
-                .orElseThrow(() -> new IllegalArgumentException("Operação Negada: Saldo insuficiente na moeda de origem."));
+        // 1. Cotação da Coinbase
+        BigDecimal cotacao = obterCotacaoCoinbase(codigoMoedaOrigem, codigoMoedaDestino);
 
-        if (saldoOrigem.getSaldo().compareTo(valor) < 0) {
-            throw new IllegalArgumentException("Operação Negada: Saldo insuficiente para realizar a conversão.");
-        }
+        // 2. Cálculos com escala explícita — elimina NullPointerException e escala imprevisível
+        BigDecimal valorDestinoBruto = valorOrigem.multiply(cotacao)
+                .setScale(ESCALA, RoundingMode.HALF_UP);
+        BigDecimal valorTaxaOrigem = valorOrigem.multiply(taxaConversaoPercentual)
+                .setScale(ESCALA, RoundingMode.HALF_UP);
+        BigDecimal valorTotalDebitoOrigem = valorOrigem.add(valorTaxaOrigem)
+                .setScale(ESCALA, RoundingMode.HALF_UP);
 
-        
-        BigDecimal valorDestinoBruto = valor.multiply(cotacao).setScale(8, RoundingMode.HALF_UP);
-        
-        
-        BigDecimal valorTaxa = valorDestinoBruto.multiply(taxaConversaoPercentual)
-                .divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP);
+        // 3. Atualizar saldos (Fail-Fast se saldo insuficiente)
+        saldoCarteiraService.subtrairSaldo(enderecoCarteira, moedaOrigem.getIdMoeda(), valorTotalDebitoOrigem);
+        saldoCarteiraService.adicionarSaldo(enderecoCarteira, moedaDestino.getIdMoeda(), valorDestinoBruto);
 
-        
-        BigDecimal valorDestinoLiquido = valorDestinoBruto.subtract(valorTaxa);
+        // 4. Registrar histórico na tabela CONVERSAO
+        Conversao conversao = new Conversao();
+        conversao.setEnderecoCarteira(enderecoCarteira);
+        conversao.setIdMoedaOrigem(moedaOrigem.getIdMoeda());
+        conversao.setIdMoedaDestino(moedaDestino.getIdMoeda());
+        conversao.setValorOrigem(valorOrigem.setScale(ESCALA, RoundingMode.HALF_UP));
+        conversao.setValorDestino(valorDestinoBruto);
+        conversao.setTaxaPercentual(taxaConversaoPercentual.setScale(4, RoundingMode.HALF_UP));
+        conversao.setTaxaValor(valorTaxaOrigem);
+        conversao.setCotacaoUtilizada(cotacao);
 
-       
-        SaldoCarteira saldoDestino = saldoCarteiraRepository
-                .findByCarteira_EnderecoCarteiraAndMoeda_Codigo(endereco, codigoDestino)
-                .orElse(new SaldoCarteira(carteira, moedaDestino, BigDecimal.ZERO));
-
-        
-        saldoOrigem.setSaldo(saldoOrigem.getSaldo().subtract(valor));
-        saldoDestino.setSaldo(saldoDestino.getSaldo().add(valorDestinoLiquido));
-
-        saldoCarteiraRepository.save(saldoOrigem);
-        saldoCarteiraRepository.save(saldoDestino);
-
-        
-        Conversao conversao = new Conversao(carteira, moedaOrigem, moedaDestino, valor, valorDestinoBruto, cotacao, taxaConversaoPercentual, valorTaxa);
         conversaoRepository.save(conversao);
-
-        
-        Transacao transacaoSaida = new Transacao(carteira, moedaOrigem, TipoTransacao.CONVERSAO_SAIDA, valor, BigDecimal.ZERO);
-        transacaoRepository.save(transacaoSaida);
-
-        Transacao transacaoEntrada = new Transacao(carteira, moedaDestino, TipoTransacao.CONVERSAO_ENTRADA, valorDestinoLiquido, valorTaxa);
-        transacaoRepository.save(transacaoEntrada);
-
-        return conversao;
     }
 }

@@ -1,8 +1,7 @@
 package com.projeto.carteiradigital.service;
 
-import com.projeto.carteiradigital.model.*;
-import com.projeto.carteiradigital.repository.SaldoCarteiraRepository;
-import com.projeto.carteiradigital.repository.TransacaoRepository;
+import com.projeto.carteiradigital.model.Moeda;
+import com.projeto.carteiradigital.model.Transferencia;
 import com.projeto.carteiradigital.repository.TransferenciaRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,81 +13,49 @@ import java.math.RoundingMode;
 @Service
 public class TransferenciaService {
 
+    private static final int ESCALA = 8;
+
     private final TransferenciaRepository transferenciaRepository;
-    private final TransacaoRepository transacaoRepository;
-    private final SaldoCarteiraRepository saldoCarteiraRepository;
-    private final CarteiraService carteiraService;
+    private final SaldoCarteiraService saldoCarteiraService;
     private final MoedaService moedaService;
 
-    @Value("${APP_TAXA_TRANSFERENCIA:0.01}")
+    @Value("${TAXA_TRANSFERENCIA_PERCENTUAL:0.01}")
     private BigDecimal taxaTransferenciaPercentual;
 
     public TransferenciaService(TransferenciaRepository transferenciaRepository,
-                                TransacaoRepository transacaoRepository,
-                                SaldoCarteiraRepository saldoCarteiraRepository,
-                                CarteiraService carteiraService,
+                                SaldoCarteiraService saldoCarteiraService,
                                 MoedaService moedaService) {
         this.transferenciaRepository = transferenciaRepository;
-        this.transacaoRepository = transacaoRepository;
-        this.saldoCarteiraRepository = saldoCarteiraRepository;
-        this.carteiraService = carteiraService;
+        this.saldoCarteiraService = saldoCarteiraService;
         this.moedaService = moedaService;
     }
 
     @Transactional
-    public Transferencia transferir(String enderecoOrigem, String enderecoDestino, String codigoMoeda, BigDecimal valor) {
-       
-        if (valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Alerta SecOps: O valor da transferência deve ser maior que zero.");
-        }
+    public void realizarTransferencia(String enderecoOrigem, String enderecoDestino,
+                                       String codigoMoeda, BigDecimal valor) {
+        Moeda moeda = moedaService.buscarPorCodigo(codigoMoeda)
+                .orElseThrow(() -> new IllegalArgumentException("Moeda não suportada: " + codigoMoeda));
 
-       
-        if (enderecoOrigem.equals(enderecoDestino)) {
-            throw new IllegalArgumentException("Alerta SecOps: Não é permitido transferir fundos para a própria carteira.");
-        }
-
-        
-        Carteira origem = carteiraService.buscarCarteiraSegura(enderecoOrigem);
-        Carteira destino = carteiraService.buscarCarteiraSegura(enderecoDestino);
-        Moeda moeda = moedaService.buscarPorCodigoSeguro(codigoMoeda);
-
-        SaldoCarteira saldoOrigem = saldoCarteiraRepository
-                .findByCarteira_EnderecoCarteiraAndMoeda_Codigo(enderecoOrigem, codigoMoeda)
-                .orElseThrow(() -> new IllegalArgumentException("Operação Negada: Carteira de origem não possui saldo nesta moeda."));
-
-        
+        // Taxa com escala explícita — elimina escala imprevisível de BigDecimal
         BigDecimal valorTaxa = valor.multiply(taxaTransferenciaPercentual)
-                .divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP);
-        BigDecimal totalDesconto = valor.add(valorTaxa);
+                .setScale(ESCALA, RoundingMode.HALF_UP);
+        BigDecimal valorTotalDebito = valor.add(valorTaxa)
+                .setScale(ESCALA, RoundingMode.HALF_UP);
 
-        
-        if (saldoOrigem.getSaldo().compareTo(totalDesconto) < 0) {
-            throw new IllegalArgumentException("Operação Negada: Saldo insuficiente para cobrir a transferência e as taxas.");
-        }
+        // Débito da origem (Fail-Fast se saldo insuficiente para valor + taxa)
+        saldoCarteiraService.subtrairSaldo(enderecoOrigem, moeda.getIdMoeda(), valorTotalDebito);
 
-  
-        SaldoCarteira saldoDestino = saldoCarteiraRepository
-                .findByCarteira_EnderecoCarteiraAndMoeda_Codigo(enderecoDestino, codigoMoeda)
-                .orElse(new SaldoCarteira(destino, moeda, BigDecimal.ZERO));
+        // Crédito no destino: valor líquido sem taxa
+        saldoCarteiraService.adicionarSaldo(enderecoDestino, moeda.getIdMoeda(),
+                valor.setScale(ESCALA, RoundingMode.HALF_UP));
 
-        
-        saldoOrigem.setSaldo(saldoOrigem.getSaldo().subtract(totalDesconto));
-        saldoDestino.setSaldo(saldoDestino.getSaldo().add(valor));
+        Transferencia transferencia = new Transferencia();
+        transferencia.setEnderecoOrigem(enderecoOrigem);
+        transferencia.setEnderecoDestino(enderecoDestino);
+        transferencia.setIdMoeda(moeda.getIdMoeda());
+        transferencia.setValor(valor.setScale(ESCALA, RoundingMode.HALF_UP));
+        transferencia.setTaxaValor(valorTaxa);
 
-        saldoCarteiraRepository.save(saldoOrigem);
-        saldoCarteiraRepository.save(saldoDestino);
-
-        
-        Transferencia transferencia = new Transferencia(origem, destino, moeda, valor, valorTaxa);
         transferenciaRepository.save(transferencia);
-
-        
-        Transacao transacaoSaida = new Transacao(origem, moeda, TipoTransacao.TRANSFERENCIA_ENVIADA, valor, valorTaxa);
-        transacaoRepository.save(transacaoSaida);
-        
-        Transacao transacaoEntrada = new Transacao(destino, moeda, TipoTransacao.TRANSFERENCIA_RECEBIDA, valor, BigDecimal.ZERO);
-        transacaoRepository.save(transacaoEntrada);
-
-        return transferencia;
     }
 }

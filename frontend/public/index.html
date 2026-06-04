@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +19,7 @@
             </div>
 
             <div class="login-form" id="form-login" style="display: none;">
-                <input type="text" id="input-uuid" placeholder="Cole seu UUID aqui...">
+                <input type="text" id="input-uuid" placeholder="Cole o UUID da sua Carteira aqui...">
                 <button class="btn-primary" onclick="acessarCarteira()">Entrar</button>
                 <button class="btn-text" onclick="voltarOnboarding()">Voltar</button>
             </div>
@@ -81,13 +81,13 @@
             <span class="close-btn" onclick="fecharModal('modal-deposito')">&times;</span>
             <h3>Realizar Depósito</h3>
             <form onsubmit="realizarDeposito(event)">
-                <input type="number" id="dep-valor" placeholder="Valor do Depósito" step="0.01" required>
+                <input type="number" id="dep-valor" placeholder="Valor do Depósito" step="0.00000001" required>
                 <select id="dep-moeda" class="input-select" required>
                     <option value="BRL">Real Brasileiro (BRL)</option>
                     <option value="USD">Dólar Americano (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                    <option value="GBP">Libra Esterlina (GBP)</option>
                     <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="SOL">Solana (SOL)</option>
                 </select>
                 <button type="submit" class="btn-primary" style="width: 100%;">Confirmar Depósito</button>
             </form>
@@ -99,14 +99,15 @@
             <span class="close-btn" onclick="fecharModal('modal-saque')">&times;</span>
             <h3>Realizar Saque</h3>
             <form onsubmit="realizarSaque(event)">
-                <input type="number" id="saq-valor" placeholder="Valor do Saque" step="0.01" required>
+                <input type="number" id="saq-valor" placeholder="Valor do Saque" step="0.00000001" required>
                 <select id="saq-moeda" class="input-select" required>
                     <option value="BRL">Real Brasileiro (BRL)</option>
                     <option value="USD">Dólar Americano (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                    <option value="GBP">Libra Esterlina (GBP)</option>
                     <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="SOL">Solana (SOL)</option>
                 </select>
+                <input type="password" id="saq-chave" placeholder="Chave Privada (Assinatura)" required>
                 <button type="submit" class="btn-primary" style="width: 100%;">Confirmar Saque</button>
             </form>
         </div>
@@ -118,14 +119,15 @@
             <h3>Transferência P2P</h3>
             <form onsubmit="realizarTransferencia(event)">
                 <input type="text" id="transf-destino" placeholder="UUID da Carteira de Destino" required>
-                <input type="number" id="transf-valor" placeholder="Valor a Transferir" step="0.01" required>
+                <input type="number" id="transf-valor" placeholder="Valor a Transferir" step="0.00000001" required>
                 <select id="transf-moeda" class="input-select" required>
                     <option value="BRL">Real Brasileiro (BRL)</option>
                     <option value="USD">Dólar Americano (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                    <option value="GBP">Libra Esterlina (GBP)</option>
                     <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="SOL">Solana (SOL)</option>
                 </select>
+                <input type="password" id="transf-chave" placeholder="Chave Privada (Assinatura)" required>
                 <button type="submit" class="btn-primary" style="width: 100%;">Transferir Fundos</button>
             </form>
         </div>
@@ -136,29 +138,28 @@
             <span class="close-btn" onclick="fecharModal('modal-cambio')">&times;</span>
             <h3>Câmbio de Moedas</h3>
             <form onsubmit="realizarCambio(event)">
-                <input type="number" id="cambio-valor" placeholder="Valor a Converter" step="0.01" required>
+                <input type="number" id="cambio-valor" placeholder="Valor a Converter" step="0.00000001" required>
                 
-                <select id="cambio-origem" class="input-select" required onchange="simularCotacao()">
+                <select id="cambio-origem" class="input-select" required>
                     <option value="" disabled selected>Moeda de Origem</option>
                     <option value="BRL">Real Brasileiro (BRL)</option>
                     <option value="USD">Dólar Americano (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                    <option value="GBP">Libra Esterlina (GBP)</option>
                     <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="SOL">Solana (SOL)</option>
                 </select>
                 
-                <select id="cambio-destino" class="input-select" required onchange="simularCotacao()">
+                <select id="cambio-destino" class="input-select" required>
                     <option value="" disabled selected>Moeda de Destino</option>
                     <option value="BRL">Real Brasileiro (BRL)</option>
                     <option value="USD">Dólar Americano (USD)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                    <option value="GBP">Libra Esterlina (GBP)</option>
                     <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="SOL">Solana (SOL)</option>
                 </select>
-                
-                <input type="number" id="cambio-cotacao" class="input-locked" placeholder="Cotação Oficial (Cálculo Automático)" readonly required>
-                
-                <button type="submit" class="btn-primary" style="width: 100%;">Efetuar Câmbio</button>
+
+                <input type="password" id="cambio-chave" placeholder="Chave Privada (Assinatura)" required>
+                <button type="submit" class="btn-primary" style="width: 100%;">Efetuar Câmbio na Coinbase</button>
             </form>
         </div>
     </div>
@@ -168,7 +169,7 @@
             <span class="close-btn" onclick="fecharModal('modal-recibo')">&times;</span>
             <div class="recibo-header">
                 <h3>Comprovante de Transação</h3>
-                <p>Sistema Financeiro | Carteira Digital</p>
+                <p>Sistema Financeiro ACID | Carteira Digital</p>
             </div>
             <div class="recibo-body" id="recibo-detalhes">
                 </div>

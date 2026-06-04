@@ -1,70 +1,91 @@
 package com.projeto.carteiradigital.controller;
 
+import com.projeto.carteiradigital.dto.ConversaoDto;
 import com.projeto.carteiradigital.dto.OperacaoFinanceiraDto;
-import com.projeto.carteiradigital.model.Transacao;
-import com.projeto.carteiradigital.model.Transferencia;
-import com.projeto.carteiradigital.service.ConversaoService;
-import com.projeto.carteiradigital.service.TransacaoService;
-import com.projeto.carteiradigital.service.TransferenciaService;
-
+import com.projeto.carteiradigital.dto.TransferenciaDto;
+import com.projeto.carteiradigital.exception.AcessoNegadoException;
+import com.projeto.carteiradigital.model.Carteira;
+import com.projeto.carteiradigital.service.*;
+import com.projeto.carteiradigital.util.CryptoUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/v1/carteiras/{endereco}")
+@RequestMapping("/api/v1/carteiras")
 public class TransacaoController {
 
-    private final TransacaoService transacaoService;
-    private final TransferenciaService transferenciaService; 
+    private final DepositoSaqueService depositoSaqueService;
+    private final TransferenciaService transferenciaService;
     private final ConversaoService conversaoService;
+    private final CarteiraService carteiraService;
+    private final CryptoUtils cryptoUtils;
 
-    public TransacaoController(TransacaoService transacaoService, TransferenciaService transferenciaService, ConversaoService conversaoService) {
-        this.transacaoService = transacaoService;
+    public TransacaoController(DepositoSaqueService depositoSaqueService,
+                               TransferenciaService transferenciaService,
+                               ConversaoService conversaoService,
+                               CarteiraService carteiraService,
+                               CryptoUtils cryptoUtils) {
+        this.depositoSaqueService = depositoSaqueService;
         this.transferenciaService = transferenciaService;
         this.conversaoService = conversaoService;
+        this.carteiraService = carteiraService;
+        this.cryptoUtils = cryptoUtils;
     }
 
-   
-    @PostMapping("/depositos")
-    public ResponseEntity<Transacao> depositar(
-            @PathVariable String endereco,
-            @RequestBody OperacaoFinanceiraDto dto) {
-        
-        Transacao transacao = transacaoService.depositar(endereco, dto.codigoMoeda(), dto.valor());
-        
-        return ResponseEntity.ok(transacao);
+    // --- DEPÓSITOS (Sem validação, entrada livre) ---
+    @PostMapping("/{enderecoCarteira}/depositos")
+    public ResponseEntity<?> depositar(@PathVariable String enderecoCarteira,
+                                       @RequestBody OperacaoFinanceiraDto dto) {
+        depositoSaqueService.realizarDeposito(enderecoCarteira, dto.getCodigoMoeda(), dto.getValor());
+        return ResponseEntity.ok(Map.of("mensagem", "Depósito realizado com sucesso!"));
     }
 
-   
-    @PostMapping("/saques")
-    public ResponseEntity<Transacao> sacar(
-            @PathVariable String endereco,
-            @RequestBody OperacaoFinanceiraDto dto) {
-        
-        Transacao transacao = transacaoService.sacar(endereco, dto.codigoMoeda(), dto.valor());
-        
-        return ResponseEntity.ok(transacao);
+    // --- SAQUES (Requer Chave Privada) ---
+    @PostMapping("/{enderecoCarteira}/saques")
+    public ResponseEntity<?> sacar(@PathVariable String enderecoCarteira,
+                                   @RequestBody OperacaoFinanceiraDto dto) {
+        validarChavePrivada(enderecoCarteira, dto.getChavePrivada());
+        depositoSaqueService.realizarSaque(enderecoCarteira, dto.getCodigoMoeda(), dto.getValor());
+        return ResponseEntity.ok(Map.of("mensagem", "Saque realizado com sucesso!"));
     }
 
-    @PostMapping("/transferencias")
-    public ResponseEntity<Transferencia> transferir(
-            @PathVariable String endereco,
-            @RequestBody com.projeto.carteiradigital.dto.TransferenciaDto dto) {
-        
-        Transferencia transferencia = transferenciaService.transferir(
-                endereco, dto.enderecoDestino(), dto.codigoMoeda(), dto.valor());
-        
-        return ResponseEntity.ok(transferencia);
+    // --- TRANSFERÊNCIAS (Requer Chave Privada) ---
+    @PostMapping("/{enderecoOrigem}/transferencias")
+    public ResponseEntity<?> transferir(@PathVariable String enderecoOrigem,
+                                        @RequestBody TransferenciaDto dto) {
+        validarChavePrivada(enderecoOrigem, dto.getChavePrivada());
+        transferenciaService.realizarTransferencia(enderecoOrigem, dto.getEnderecoDestino(),
+                dto.getCodigoMoeda(), dto.getValor());
+        return ResponseEntity.ok(Map.of("mensagem", "Transferência realizada com sucesso!"));
     }
 
-    @PostMapping("/conversoes")
-    public ResponseEntity<com.projeto.carteiradigital.model.Conversao> converter(
-            @PathVariable String endereco,
-            @RequestBody com.projeto.carteiradigital.dto.ConversaoDto dto) {
-        
-        com.projeto.carteiradigital.model.Conversao conversao = conversaoService.converter(
-                endereco, dto.codigoMoedaOrigem(), dto.codigoMoedaDestino(), dto.valor(), dto.cotacao());
-        
-        return ResponseEntity.ok(conversao);
+    // --- CONVERSÕES (Requer Chave Privada) ---
+    @PostMapping("/{enderecoCarteira}/conversoes")
+    public ResponseEntity<?> converter(@PathVariable String enderecoCarteira,
+                                       @RequestBody ConversaoDto dto) {
+        validarChavePrivada(enderecoCarteira, dto.getChavePrivada());
+        conversaoService.realizarConversao(enderecoCarteira, dto.getMoedaOrigem(),
+                dto.getMoedaDestino(), dto.getValorOrigem());
+        return ResponseEntity.ok(Map.of("mensagem", "Conversão realizada com sucesso!"));
+    }
+
+    // ================================================================
+    // MOTOR DE SEGURANÇA — lança AcessoNegadoException (HTTP 403)
+    // ================================================================
+    private void validarChavePrivada(String enderecoCarteira, String chavePrivadaFornecida) {
+        if (chavePrivadaFornecida == null || chavePrivadaFornecida.isBlank()) {
+            throw new AcessoNegadoException("Acesso Negado: chave privada é obrigatória para operações de saída.");
+        }
+
+        Carteira carteira = carteiraService.buscarPorEndereco(enderecoCarteira)
+                .orElseThrow(() -> new IllegalArgumentException("Carteira não encontrada: " + enderecoCarteira));
+
+        String hashFornecido = cryptoUtils.gerarHashSHA256(chavePrivadaFornecida);
+
+        if (!carteira.getHashChavePrivada().equals(hashFornecido)) {
+            throw new AcessoNegadoException("Assinatura Inválida: a chave fornecida não corresponde a esta carteira.");
+        }
     }
 }
