@@ -1,0 +1,91 @@
+* { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+body { background-color: #f3f4f6; color: #1f2937; height: 100vh; display: flex; flex-direction: column; }
+
+/* Utilitários de Ocultação */
+.screen-hidden { display: none !important; }
+
+/* --- TELA 1: ONBOARDING --- */
+#onboarding-screen { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+.onboarding-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; width: 100%; max-width: 400px; }
+.onboarding-card h1 { color: #0f172a; margin-bottom: 5px; font-size: 28px; }
+.onboarding-card p { color: #64748b; margin-bottom: 25px; }
+
+.onboarding-actions { display: flex; flex-direction: column; gap: 15px; }
+.login-form { display: flex; flex-direction: column; }
+
+/* Botões */
+button { padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.2s; }
+.btn-primary { background-color: #2563eb; color: white; margin-bottom: 10px; }
+.btn-primary:hover { background-color: #1d4ed8; }
+.btn-secondary { background-color: #f1f5f9; color: #334155; }
+.btn-secondary:hover { background-color: #e2e8f0; }
+.btn-text { background: transparent; color: #64748b; font-weight: normal; font-size: 14px; }
+.btn-text:hover { text-decoration: underline; color: #0f172a; }
+
+/* Inputs */
+input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; outline: none; transition: border-color 0.2s; }
+input:focus { border-color: #2563eb; }
+
+/* --- TELA 2: DASHBOARD BANCÁRIO --- */
+.topbar { background: #0f172a; color: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.badge-uuid { background: #334155; padding: 6px 12px; border-radius: 6px; font-family: monospace; font-size: 14px; }
+.btn-sair { background: #ef4444; color: white; padding: 8px 20px; font-size: 14px; }
+.btn-sair:hover { background: #dc2626; }
+
+.dashboard-container { display: flex; gap: 30px; padding: 40px; max-width: 1200px; margin: 0 auto; width: 100%; }
+.col-esquerda { flex: 1; display: flex; flex-direction: column; gap: 30px; }
+.col-direita { flex: 2; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+
+/* Seções */
+h3 { color: #334155; margin-bottom: 15px; font-size: 18px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }
+
+/* Cards de Saldo */
+.grid-saldos { display: flex; gap: 20px; flex-wrap: wrap; }
+.card-saldo { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; min-width: 150px; border-left: 5px solid #2563eb; }
+.card-saldo h4 { color: #64748b; font-size: 14px; font-weight: normal; margin-bottom: 10px; }
+.card-saldo .valor { font-size: 28px; font-weight: bold; color: #0f172a; }
+
+/* Menu de Operações */
+.menu-operacoes { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.menu-operacoes button { background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; height: 80px; }
+.menu-operacoes button:hover { background: #e2e8f0; border-color: #cbd5e1; }
+
+/* Tabela de Extrato */
+.tabela-container { overflow-x: auto; max-height: 500px; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { padding: 15px 10px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+th { color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; background: white; }
+td { font-size: 15px; color: #1e293b; }
+.taxa { color: #ef4444; font-size: 13px; }
+
+/* --- ESTILOS DOS MODAIS --- */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+.modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 450px; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+.modal-content h3 { border-bottom: none; color: #0f172a; margin-bottom: 20px; font-size: 22px; }
+.close-btn { position: absolute; top: 20px; right: 20px; font-size: 24px; cursor: pointer; color: #64748b; font-weight: bold; line-height: 1; }
+.close-btn:hover { color: #ef4444; }
+.input-select { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; outline: none; background-color: white; cursor: pointer; }
+.input-select:focus { border-color: #2563eb; }
+
+/* Campo Bloqueado por Segurança */
+.input-locked { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; font-weight: bold; }
+.input-locked:focus { border-color: #e2e8f0; }
+
+/* --- ESTILOS DO COMPROVANTE (RECIBO) --- */
+.recibo-content { max-width: 400px; background: #fff; font-family: 'Courier New', Courier, monospace; }
+.recibo-header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 15px; margin-bottom: 15px; }
+.recibo-header h3 { font-size: 18px; color: #0f172a; margin-bottom: 5px; border: none; padding: 0; }
+.recibo-header p { color: #64748b; font-size: 14px; }
+.recibo-body p { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 15px; color: #334155; }
+.recibo-body strong { color: #0f172a; }
+.recibo-footer { margin-top: 20px; border-top: 2px dashed #cbd5e1; padding-top: 15px; display: flex; justify-content: center; }
+.btn-sm { padding: 6px 12px; font-size: 12px; background: #e2e8f0; color: #334155; border-radius: 4px; border: none; cursor: pointer; transition: 0.2s; font-weight: bold; }
+.btn-sm:hover { background: #cbd5e1; }
+
+/* Esconde o fundo do site na hora de salvar o PDF/Imprimir */
+@media print {
+    body * { visibility: hidden; }
+    #modal-recibo, #modal-recibo * { visibility: visible; }
+    #modal-recibo { position: absolute; left: 0; top: 0; background: white; box-shadow: none; }
+    .close-btn, .recibo-footer { display: none; }
+}
