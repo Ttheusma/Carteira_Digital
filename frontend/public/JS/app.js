@@ -102,14 +102,29 @@ function sair() {
 }
 
 // --- RENDERIZAÇÃO DE DADOS ---
+const MOEDAS_META = {
+    1: { codigo: 'BTC', nome: 'Bitcoin',          icone: '₿',  cor: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
+    2: { codigo: 'ETH', nome: 'Ethereum',          icone: 'Ξ',  cor: '#6366f1', bg: 'rgba(99,102,241,0.15)'  },
+    3: { codigo: 'SOL', nome: 'Solana',            icone: '◎',  cor: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    4: { codigo: 'USD', nome: 'Dólar Americano',   icone: '$',  cor: '#22d3ee', bg: 'rgba(34,211,238,0.15)'  },
+    5: { codigo: 'BRL', nome: 'Real Brasileiro',   icone: 'R$', cor: '#a78bfa', bg: 'rgba(167,139,250,0.15)' }
+};
+
 function renderizarSaldos(listaSaldos) {
     const container = document.getElementById("cards-saldo");
     container.innerHTML = "";
     listaSaldos.forEach(item => {
+        const meta = MOEDAS_META[item.idMoeda] || { codigo: '?', nome: 'Moeda', icone: '?', cor: '#94a3b8', bg: 'rgba(148,163,184,0.15)' };
         container.innerHTML += `
             <div class="card-saldo">
-                <h4>Saldo em ${item.idMoeda === 1 ? 'BTC' : item.idMoeda === 2 ? 'ETH' : item.idMoeda === 3 ? 'SOL' : item.idMoeda === 4 ? 'USD' : 'BRL'}</h4>
-                <p class="valor">${item.saldo}</p>
+                <div class="card-saldo-info">
+                    <div class="card-saldo-icon" style="background:${meta.bg}; color:${meta.cor}">${meta.icone}</div>
+                    <div>
+                        <h4>${meta.codigo}</h4>
+                        <span class="nome-moeda">${meta.nome}</span>
+                    </div>
+                </div>
+                <p class="valor">${parseFloat(item.saldo).toFixed(8)}</p>
             </div>
         `;
     });
@@ -129,14 +144,15 @@ function renderizarExtrato(listaExtrato) {
         const dataFormatada = new Date(tx.dataHora).toLocaleString('pt-PT');
         const operacaoLimpa = tx.tipoOperacao.replace('_', ' ');
 
+        const meta = Object.values(MOEDAS_META).find(m => m.codigo === tx.moeda.codigo) || { cor: '#94a3b8' };
         tbody.innerHTML += `
             <tr>
-                <td>${dataFormatada}</td>
-                <td><strong>${operacaoLimpa}</strong></td>
-                <td>${tx.moeda.codigo}</td>
-                <td>${tx.valor}</td>
-                <td class="taxa">${tx.taxaCobrada > 0 ? '- ' + tx.taxaCobrada : 'Isento'}</td>
-                <td><button class="btn-sm" onclick="abrirRecibo(${index})">Ver</button></td>
+                <td style="color:#64748b; font-size:12px">${dataFormatada}</td>
+                <td><strong style="color:#e2e8f0">${operacaoLimpa}</strong></td>
+                <td><span style="color:${meta.cor}; font-weight:600">${tx.moeda.codigo}</span></td>
+                <td style="font-family:'Courier New',monospace; color:#a78bfa">${parseFloat(tx.valor).toFixed(8)}</td>
+                <td class="taxa">${tx.taxaCobrada > 0 ? '- ' + parseFloat(tx.taxaCobrada).toFixed(8) : '<span style="color:#10b981">Isento</span>'}</td>
+                <td><button style="background:rgba(124,58,237,0.2);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer" onclick="abrirRecibo(${index})">🧾 Ver</button></td>
             </tr>
         `;
     });
