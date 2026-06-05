@@ -10,14 +10,13 @@ networks:
   db_admin_net:
     driver: bridge
     internal: false
-  
+
 volumes:
-  postgres_data: 
+  postgres_data:
 
 services:
   frontend:
-    build: 
-      context: ./frontend
+    image: theusmanun/carteira-frontend:latest
     container_name: carteira_frontend
     ports:
       - "${FRONTEND_PUBLISH_PORT}:8080"
@@ -29,19 +28,17 @@ services:
         condition: service_healthy
 
   backend:
-    build: 
-      context: ./backend
+    image: theusmanun/carteira-backend:latest
     container_name: carteira_backend
-    ports:                  
-      - "8080:8080"  
-    env_file:             
-      - .env       
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${DB_NAME}
       - SPRING_DATASOURCE_USERNAME=${DB_APP_USER}
       - SPRING_DATASOURCE_PASSWORD=${DB_APP_PASSWORD}
       - SPRING_PROFILES_ACTIVE=prod
-      # As variáveis abaixo já são expostas via env_file, mas ficam explícitas para clareza
       - TAXA_SAQUE_PERCENTUAL=${TAXA_SAQUE_PERCENTUAL}
       - TAXA_CONVERSAO_PERCENTUAL=${TAXA_CONVERSAO_PERCENTUAL}
       - TAXA_TRANSFERENCIA_PERCENTUAL=${TAXA_TRANSFERENCIA_PERCENTUAL}
@@ -68,10 +65,9 @@ services:
     mem_limit: 512m
 
   database:
-    image: postgres:15-alpine
+    image: theusmanun/carteira-database:latest
     container_name: carteira_database
     ports:
-      # Porta 5433 no host → evita conflito com PostgreSQL local (porta 5432)
       - "5433:5432"
     environment:
       - POSTGRES_DB=${DB_NAME}
@@ -82,8 +78,6 @@ services:
       - DB_APP_PASSWORD=${DB_APP_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/01-tabelas.sql:/docker-entrypoint-initdb.d/01-tabelas.sql:ro
-      - ./database/02-setup-secops.sh:/docker-entrypoint-initdb.d/02-setup-secops.sh:ro
     networks:
       - backend_net
       - db_admin_net
@@ -101,5 +95,5 @@ services:
       - CHOWN
       - SETUID
       - SETGID
-      - FOWNER         
+      - FOWNER
       - DAC_OVERRIDE
