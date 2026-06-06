@@ -1,377 +1,291 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Carteira Digital</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="CSS/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carteira Digital | Enterprise Banking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/style.css">
+
+
+    <!-- Aplica o tema salvo ANTES do render para evitar flash de tema errado -->
+    <script>
+        (function () {
+            if (localStorage.getItem('tema') === 'light') {
+                document.documentElement.classList.add('light');
+            }
+        })();
+    </script>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════
-     TELA 1 — ONBOARDING
-══════════════════════════════════════════════ -->
-<main id="onboarding-screen">
-  <div class="onboarding-wrap">
-    <div class="onboarding-card">
 
-      <div class="onboarding-logo">
-        <div class="logo-icon">💳</div>
-        <h1 class="logo-text">Carteira Digital</h1>
-        <p class="onboarding-sub">Plataforma de ativos digitais segura e confiável</p>
-      </div>
-
-      <div class="onboarding-actions" id="botoes-iniciais">
-        <button class="btn btn-blue" onclick="mostrarFormLogin()">
-          🔑 Já tenho uma Carteira
-        </button>
-        <button class="btn btn-outline" onclick="criarNovaCarteira()">
-          ✨ Criar Nova Carteira
-        </button>
-      </div>
-
-      <div class="login-form" id="form-login" style="display:none">
-        <label class="form-label">Endereço da Carteira</label>
-        <input class="form-control" type="text" id="input-uuid" placeholder="Cole o endereço da sua carteira..." />
-        <button class="btn btn-blue" style="width:100%;margin-top:8px" onclick="acessarCarteira()">
-          🚀 Acessar
-        </button>
-        <button class="btn-text" onclick="voltarOnboarding()">← Voltar</button>
-      </div>
-
-    </div>
-  </div>
-</main>
-
-<!-- ══════════════════════════════════════════════
-     TELA 2 — DASHBOARD
-══════════════════════════════════════════════ -->
-<div id="dashboard-screen" style="display:none; width:100%">
-
-  <!-- SIDEBAR -->
-  <nav class="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-icon">💳</div>
-      <span class="logo-text">Carteira Digital</span>
-    </div>
-
-    <span class="nav-section">Menu</span>
-    <div class="nav-item active" data-panel="dashboard">
-      <span class="icon">📊</span> Dashboard
-    </div>
-    <div class="nav-item" data-panel="historico">
-      <span class="icon">🕒</span> Histórico
-    </div>
-
-    <span class="nav-section">Operações</span>
-    <div class="nav-item" onclick="abrirModal('modal-deposito')">
-      <span class="icon">⬇️</span> Depósito
-    </div>
-    <div class="nav-item" onclick="abrirModal('modal-saque')">
-      <span class="icon">⬆️</span> Saque
-    </div>
-    <div class="nav-item" onclick="abrirModal('modal-cambio')">
-      <span class="icon">🔄</span> Câmbio
-    </div>
-    <div class="nav-item" onclick="abrirModal('modal-transferencia')">
-      <span class="icon">📤</span> Transferência
-    </div>
-
-    <span class="nav-section">Conta</span>
-    <div class="nav-item" onclick="sair()">
-      <span class="icon">⏻</span> Sair
-    </div>
-
-    <div class="sidebar-wallet">
-      <div class="sidebar-wallet-label">Carteira ativa</div>
-      <div class="sidebar-wallet-addr" id="sidebar-addr">
-        <span style="color:var(--dim)">Nenhuma selecionada</span>
-      </div>
-    </div>
-  </nav>
-
-  <!-- MAIN -->
-  <div class="main">
-    <div class="topbar">
-      <span class="topbar-title" id="topbar-title">Dashboard</span>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span class="status-pill ativa" id="topbar-status" style="display:none">ATIVA</span>
-        <button class="btn-text" onclick="sair()" style="font-size:12px">⏻ Sair</button>
-      </div>
-    </div>
-
-    <div class="content">
-
-      <!-- DASHBOARD -->
-      <div class="panel active" id="panel-dashboard">
-        <div>
-          <div class="section-title">Saldos</div>
-          <div style="margin-top:1rem">
-            <div class="balances-grid" id="balances-grid">
-              <div class="balance-card" style="grid-column:1/-1">
-                <div class="empty-state">Carregando saldos...</div>
-              </div>
-            </div>
-          </div>
+    <!-- ===================== TELA 1: ONBOARDING ===================== -->
+    <main id="onboarding-screen">
+        <div class="bg-orbs">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
         </div>
 
-        <div>
-          <div class="section-title">Operações rápidas</div>
-          <div class="ops-grid" style="margin-top:1rem">
 
-            <div class="op-card" onclick="abrirModal('modal-deposito')" style="cursor:pointer">
-              <div class="op-header">
-                <div class="op-icon" style="background:var(--green-bg)">⬇️</div>
-                <div>
-                  <div class="op-title">Depósito</div>
-                  <div class="op-fee">sem taxa · crédito imediato</div>
-                </div>
-              </div>
-              <p style="font-size:12px;color:var(--dim)">Adicione saldo em qualquer moeda suportada.</p>
+        <!-- Botão de tema flutuante no onboarding -->
+        <button class="btn-tema-onboarding" id="btn-tema-onboarding" onclick="alternarTema()" title="Alternar tema claro/escuro">
+            🌙
+        </button>
+
+
+        <div class="onboarding-card glass">
+            <div class="logo-area">
+                <div class="logo-icon">₿</div>
+                <h1>Carteira Digital</h1>
+                <p>Plataforma de ativos digitais segura e confiável</p>
             </div>
-
-            <div class="op-card" onclick="abrirModal('modal-saque')" style="cursor:pointer">
-              <div class="op-header">
-                <div class="op-icon" style="background:var(--amber-bg)">⬆️</div>
-                <div>
-                  <div class="op-title">Saque</div>
-                  <div class="op-fee">taxa: 1% · requer chave privada</div>
-                </div>
-              </div>
-              <p style="font-size:12px;color:var(--dim)">Retire saldo com autenticação pela chave privada.</p>
+            <div class="onboarding-actions" id="botoes-iniciais">
+                <button class="btn-primary" onclick="mostrarFormLogin()">
+                    <span class="btn-icon">🔑</span> Já tenho uma Carteira
+                </button>
+                <button class="btn-ghost" onclick="criarNovaCarteira()">
+                    <span class="btn-icon">✨</span> Criar Nova Carteira
+                </button>
             </div>
-
-            <div class="op-card" onclick="abrirModal('modal-cambio')" style="cursor:pointer">
-              <div class="op-header">
-                <div class="op-icon" style="background:rgba(79,142,247,0.12)">🔄</div>
-                <div>
-                  <div class="op-title">Câmbio</div>
-                  <div class="op-fee">taxa: 2% · cotação Coinbase ao vivo</div>
-                </div>
-              </div>
-              <p style="font-size:12px;color:var(--dim)">Converta entre BTC, ETH, SOL, USD e BRL.</p>
+            <div class="login-form" id="form-login" style="display: none;">
+                <label class="input-label">Endereço da Carteira</label>
+                <input type="text" id="input-uuid" placeholder="Cole o endereço da sua Carteira...">
+                <button class="btn-primary" onclick="acessarCarteira()">
+                    <span class="btn-icon">🚀</span> Acessar
+                </button>
+                <button class="btn-text" onclick="voltarOnboarding()">← Voltar</button>
             </div>
-
-            <div class="op-card" onclick="abrirModal('modal-transferencia')" style="cursor:pointer">
-              <div class="op-header">
-                <div class="op-icon" style="background:var(--purple-bg)">📤</div>
-                <div>
-                  <div class="op-title">Transferência</div>
-                  <div class="op-fee">taxa: 1% na origem</div>
-                </div>
-              </div>
-              <p style="font-size:12px;color:var(--dim)">Envie para outra carteira. Destino recebe sem taxa.</p>
-            </div>
-
-          </div>
         </div>
-      </div>
+    </main>
 
-      <!-- HISTÓRICO -->
-      <div class="panel" id="panel-historico">
-        <div class="section-title">Histórico de Transações</div>
-        <div id="hist-content">
-          <div class="empty-state">Carregando histórico...</div>
+
+    <!-- ===================== TELA 2: DASHBOARD ===================== -->
+    <main id="dashboard-screen" class="screen-hidden">
+
+
+        <nav class="topbar glass-dark">
+            <div class="topbar-brand">
+                <span class="brand-icon">₿</span>
+                <span class="brand-name">Carteira Digital</span>
+            </div>
+            <div class="topbar-center">
+                <span class="badge-uuid" id="uuid-logado">Endereço: ...</span>
+            </div>
+            <div class="topbar-actions">
+                <!-- Botão de tema na topbar -->
+                <button class="btn-tema" id="btn-tema" onclick="alternarTema()" title="Alternar tema claro/escuro">
+                    🌙
+                </button>
+                <button class="btn-sair" onclick="sair()">⏻ Sair</button>
+            </div>
+        </nav>
+
+
+        <div class="dashboard-container">
+
+
+            <div class="col-esquerda">
+                <section class="painel glass">
+                    <div class="painel-header-saldos">
+                        <h3>Meus Saldos 💼</h3>
+                    </div>
+                    <div id="cards-saldo" class="grid-saldos"></div>
+                </section>
+
+
+                <section class="painel glass">
+                    <div class="painel-header">
+                        <h3>Operações ⚡</h3>
+                    </div>
+                    <div class="menu-operacoes">
+                        <button class="op-btn" onclick="abrirModal('modal-deposito')">
+                            <span class="op-icon">⬇️</span>
+                            <span class="op-label">Depósito</span>
+                        </button>
+                        <button class="op-btn" onclick="abrirModal('modal-saque')">
+                            <span class="op-icon">⬆️</span>
+                            <span class="op-label">Saque</span>
+                        </button>
+                        <button class="op-btn" onclick="abrirModal('modal-transferencia')">
+                            <span class="op-icon">↔️</span>
+                            <span class="op-label">Transferir</span>
+                        </button>
+                        <button class="op-btn" onclick="abrirModal('modal-cambio')">
+                            <span class="op-icon">💱</span>
+                            <span class="op-label">Câmbio</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+
+            <div class="col-direita">
+                <section class="painel glass painel-extrato-full">
+                    <div class="painel-header-historico">
+                        <h3>Histórico de Transações</h3>
+                    </div>
+                    <div class="tabela-container">
+                        <table id="tabela-extrato">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Operação</th>
+                                    <th>Moeda</th>
+                                    <th>Valor</th>
+                                    <th>Taxa</th>
+                                    <th>Comprovante</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpo-extrato"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+
         </div>
-      </div>
-
-    </div>
-  </div>
-
-</div>
+    </main>
 
 
-<!-- ══════════════════════════════════════════════
-     MODAIS
-══════════════════════════════════════════════ -->
+    <!-- ===================== MODAIS ===================== -->
 
-<!-- Depósito -->
-<div id="modal-deposito" class="modal-overlay hidden">
-  <div class="modal">
-    <button class="modal-close" onclick="fecharModal('modal-deposito')">✕</button>
-    <div class="modal-header-op">
-      <div class="op-icon" style="background:var(--green-bg);width:44px;height:44px;font-size:20px">⬇️</div>
-      <div>
-        <div class="modal-title">Realizar Depósito</div>
-        <div class="modal-sub">Sem taxa · Crédito imediato</div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Valor</label>
-      <input class="form-control" type="number" id="dep-valor" placeholder="0.00000000" step="0.00000001" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Moeda</label>
-      <select class="form-control" id="dep-moeda">
-        <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
-        <option value="USD">🇺🇸 Dólar Americano (USD)</option>
-        <option value="BTC">₿ Bitcoin (BTC)</option>
-        <option value="ETH">Ξ Ethereum (ETH)</option>
-        <option value="SOL">◎ Solana (SOL)</option>
-      </select>
-    </div>
-    <button class="btn btn-green" onclick="realizarDeposito()">⬇️ Confirmar Depósito</button>
-  </div>
-</div>
 
-<!-- Saque -->
-<div id="modal-saque" class="modal-overlay hidden">
-  <div class="modal">
-    <button class="modal-close" onclick="fecharModal('modal-saque')">✕</button>
-    <div class="modal-header-op">
-      <div class="op-icon" style="background:var(--amber-bg);width:44px;height:44px;font-size:20px">⬆️</div>
-      <div>
-        <div class="modal-title">Realizar Saque</div>
-        <div class="modal-sub">Taxa de 1% · Requer chave privada</div>
-      </div>
+    <div id="modal-deposito" class="modal-overlay screen-hidden">
+        <div class="modal-content glass-dark">
+            <button class="close-btn" onclick="fecharModal('modal-deposito')">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon" style="background: linear-gradient(135deg,#10b981,#059669)">⬇️</div>
+                <h3>Realizar Depósito</h3>
+                <p class="modal-sub">Sem taxa · Crédito imediato</p>
+            </div>
+            <form onsubmit="realizarDeposito(event)">
+                <label class="input-label">Valor</label>
+                <input type="number" id="dep-valor" placeholder="0.00000000" step="0.00000001" required>
+                <label class="input-label">Moeda</label>
+                <select id="dep-moeda" class="input-select" required>
+                    <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
+                    <option value="USD">🇺🇸 Dólar Americano (USD)</option>
+                    <option value="BTC">₿ Bitcoin (BTC)</option>
+                    <option value="ETH">Ξ Ethereum (ETH)</option>
+                    <option value="SOL">◎ Solana (SOL)</option>
+                </select>
+                <button type="submit" class="btn-primary btn-full">Confirmar Depósito</button>
+            </form>
+        </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Valor</label>
-      <input class="form-control" type="number" id="saq-valor" placeholder="0.00000000" step="0.00000001" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Moeda</label>
-      <select class="form-control" id="saq-moeda">
-        <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
-        <option value="USD">🇺🇸 Dólar Americano (USD)</option>
-        <option value="BTC">₿ Bitcoin (BTC)</option>
-        <option value="ETH">Ξ Ethereum (ETH)</option>
-        <option value="SOL">◎ Solana (SOL)</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">🔐 Chave Privada</label>
-      <input class="form-control" type="password" id="saq-chave" placeholder="Sua assinatura digital" />
-    </div>
-    <button class="btn btn-amber" onclick="realizarSaque()">⬆️ Confirmar Saque</button>
-    <div class="fee-note">o valor total debitado inclui a taxa de 1%</div>
-  </div>
-</div>
 
-<!-- Câmbio -->
-<div id="modal-cambio" class="modal-overlay hidden">
-  <div class="modal">
-    <button class="modal-close" onclick="fecharModal('modal-cambio')">✕</button>
-    <div class="modal-header-op">
-      <div class="op-icon" style="background:rgba(79,142,247,0.12);width:44px;height:44px;font-size:20px">🔄</div>
-      <div>
-        <div class="modal-title">Câmbio de Moedas</div>
-        <div class="modal-sub">Taxa de 2% · Cotação Coinbase ao vivo</div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Valor a Converter</label>
-      <input class="form-control" type="number" id="cambio-valor" placeholder="0.00000000" step="0.00000001" />
-    </div>
-    <div class="form-row form-group">
-      <div>
-        <label class="form-label">De</label>
-        <select class="form-control" id="cambio-origem">
-          <option value="" disabled selected>Origem</option>
-          <option value="BRL">BRL</option>
-          <option value="USD">USD</option>
-          <option value="BTC">BTC</option>
-          <option value="ETH">ETH</option>
-          <option value="SOL">SOL</option>
-        </select>
-      </div>
-      <div>
-        <label class="form-label">Para</label>
-        <select class="form-control" id="cambio-destino">
-          <option value="" disabled selected>Destino</option>
-          <option value="BRL">BRL</option>
-          <option value="USD">USD</option>
-          <option value="BTC">BTC</option>
-          <option value="ETH">ETH</option>
-          <option value="SOL">SOL</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">🔐 Chave Privada</label>
-      <input class="form-control" type="password" id="cambio-chave" placeholder="Sua assinatura digital" />
-    </div>
-    <button class="btn btn-blue" onclick="realizarCambio()">🔄 Efetuar Câmbio</button>
-  </div>
-</div>
 
-<!-- Transferência -->
-<div id="modal-transferencia" class="modal-overlay hidden">
-  <div class="modal">
-    <button class="modal-close" onclick="fecharModal('modal-transferencia')">✕</button>
-    <div class="modal-header-op">
-      <div class="op-icon" style="background:var(--purple-bg);width:44px;height:44px;font-size:20px">📤</div>
-      <div>
-        <div class="modal-title">Transferência P2P</div>
-        <div class="modal-sub">Taxa de 1% · Requer chave privada</div>
-      </div>
+    <div id="modal-saque" class="modal-overlay screen-hidden">
+        <div class="modal-content glass-dark">
+            <button class="close-btn" onclick="fecharModal('modal-saque')">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon" style="background: linear-gradient(135deg,#f59e0b,#d97706)">⬆️</div>
+                <h3>Realizar Saque</h3>
+                <p class="modal-sub">Taxa de 1% · Requer assinatura</p>
+            </div>
+            <form onsubmit="realizarSaque(event)">
+                <label class="input-label">Valor</label>
+                <input type="number" id="saq-valor" placeholder="0.00000000" step="0.00000001" required>
+                <label class="input-label">Moeda</label>
+                <select id="saq-moeda" class="input-select" required>
+                    <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
+                    <option value="USD">🇺🇸 Dólar Americano (USD)</option>
+                    <option value="BTC">₿ Bitcoin (BTC)</option>
+                    <option value="ETH">Ξ Ethereum (ETH)</option>
+                    <option value="SOL">◎ Solana (SOL)</option>
+                </select>
+                <label class="input-label">🔐 Chave Privada</label>
+                <input type="password" id="saq-chave" placeholder="Sua assinatura digital" required>
+                <button type="submit" class="btn-primary btn-full">Confirmar Saque</button>
+            </form>
+        </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Carteira de Destino</label>
-      <input class="form-control" type="text" id="transf-destino" placeholder="Endereço da carteira destino" />
-    </div>
-    <div class="form-row form-group">
-      <div>
-        <label class="form-label">Moeda</label>
-        <select class="form-control" id="transf-moeda">
-          <option value="BRL">BRL</option>
-          <option value="USD">USD</option>
-          <option value="BTC">BTC</option>
-          <option value="ETH">ETH</option>
-          <option value="SOL">SOL</option>
-        </select>
-      </div>
-      <div>
-        <label class="form-label">Valor</label>
-        <input class="form-control" type="number" id="transf-valor" placeholder="0.00000000" step="0.00000001" />
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">🔐 Chave Privada</label>
-      <input class="form-control" type="password" id="transf-chave" placeholder="Sua assinatura digital" />
-    </div>
-    <button class="btn btn-purple" onclick="realizarTransferencia()">📤 Transferir Fundos</button>
-    <div class="fee-note">a carteira destino recebe o valor sem desconto</div>
-  </div>
-</div>
 
-<!-- Comprovante -->
-<div id="modal-recibo" class="modal-overlay hidden">
-  <div class="modal">
-    <button class="modal-close" onclick="fecharModal('modal-recibo')">✕</button>
-    <div style="text-align:center;margin-bottom:1.5rem">
-      <div style="width:52px;height:52px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px">✅</div>
-      <div class="modal-title">Comprovante</div>
-      <div class="modal-sub">Transação confirmada · Carteira Digital</div>
+
+    <div id="modal-transferencia" class="modal-overlay screen-hidden">
+        <div class="modal-content glass-dark">
+            <button class="close-btn" onclick="fecharModal('modal-transferencia')">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon" style="background: linear-gradient(135deg,#6366f1,#4f46e5)">↔️</div>
+                <h3>Transferência P2P</h3>
+                <p class="modal-sub">Taxa de 1% · Requer assinatura</p>
+            </div>
+            <form onsubmit="realizarTransferencia(event)">
+                <label class="input-label">Carteira de Destino</label>
+                <input type="text" id="transf-destino" placeholder="Endereço da carteira destino" required>
+                <label class="input-label">Valor</label>
+                <input type="number" id="transf-valor" placeholder="0.00000000" step="0.00000001" required>
+                <label class="input-label">Moeda</label>
+                <select id="transf-moeda" class="input-select" required>
+                    <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
+                    <option value="USD">🇺🇸 Dólar Americano (USD)</option>
+                    <option value="BTC">₿ Bitcoin (BTC)</option>
+                    <option value="ETH">Ξ Ethereum (ETH)</option>
+                    <option value="SOL">◎ Solana (SOL)</option>
+                </select>
+                <label class="input-label">🔐 Chave Privada</label>
+                <input type="password" id="transf-chave" placeholder="Sua assinatura digital" required>
+                <button type="submit" class="btn-primary btn-full">Transferir Fundos</button>
+            </form>
+        </div>
     </div>
-    <div id="recibo-detalhes" class="recibo-body"></div>
-    <button class="btn btn-outline" style="margin-top:1rem" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
-  </div>
-</div>
 
-<!-- Modal nova carteira -->
-<div id="modal-nova-carteira" class="modal-overlay hidden">
-  <div class="modal">
-    <div class="modal-title" style="margin-bottom:0.5rem">✅ Carteira criada!</div>
-    <div class="modal-sub">Salve sua chave privada agora. Ela <strong>não poderá ser recuperada</strong>.</div>
-    <div class="form-label" style="margin-bottom:6px;margin-top:1rem">Endereço público</div>
-    <div class="key-box" id="modal-endereco" style="color:var(--accent)"></div>
-    <div class="form-label" style="margin-bottom:6px">Chave privada</div>
-    <div class="key-box" id="modal-chave-val"></div>
-    <div class="key-warn">⚠️ Esta é a única vez que sua chave privada será exibida. Copie e armazene com segurança.</div>
-    <div class="modal-actions">
-      <button class="btn btn-blue" onclick="copiarChave()">📋 Copiar chave</button>
-      <button class="btn btn-outline" onclick="fecharModalNovaCarteira()">Entendido, acessar</button>
+
+    <div id="modal-cambio" class="modal-overlay screen-hidden">
+        <div class="modal-content glass-dark">
+            <button class="close-btn" onclick="fecharModal('modal-cambio')">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon" style="background: linear-gradient(135deg,#ec4899,#db2777)">💱</div>
+                <h3>Câmbio de Moedas</h3>
+                <p class="modal-sub">Taxa de 2% · Cotação Coinbase ao vivo</p>
+            </div>
+            <form onsubmit="realizarCambio(event)">
+                <label class="input-label">Valor a Converter</label>
+                <input type="number" id="cambio-valor" placeholder="0.00000000" step="0.00000001" required>
+                <label class="input-label">De</label>
+                <select id="cambio-origem" class="input-select" required>
+                    <option value="" disabled selected>Moeda de Origem</option>
+                    <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
+                    <option value="USD">🇺🇸 Dólar Americano (USD)</option>
+                    <option value="BTC">₿ Bitcoin (BTC)</option>
+                    <option value="ETH">Ξ Ethereum (ETH)</option>
+                    <option value="SOL">◎ Solana (SOL)</option>
+                </select>
+                <label class="input-label">Para</label>
+                <select id="cambio-destino" class="input-select" required>
+                    <option value="" disabled selected>Moeda de Destino</option>
+                    <option value="BRL">🇧🇷 Real Brasileiro (BRL)</option>
+                    <option value="USD">🇺🇸 Dólar Americano (USD)</option>
+                    <option value="BTC">₿ Bitcoin (BTC)</option>
+                    <option value="ETH">Ξ Ethereum (ETH)</option>
+                    <option value="SOL">◎ Solana (SOL)</option>
+                </select>
+                <label class="input-label">🔐 Chave Privada</label>
+                <input type="password" id="cambio-chave" placeholder="Sua assinatura digital" required>
+                <button type="submit" class="btn-primary btn-full">Efetuar Câmbio na Coinbase</button>
+            </form>
+        </div>
     </div>
-  </div>
-</div>
 
-<!-- Toast -->
-<div id="toast-container"></div>
 
-<script src="JS/app.js"></script>
+    <div id="modal-recibo" class="modal-overlay screen-hidden">
+        <div class="modal-content glass-dark recibo-content">
+            <button class="close-btn" onclick="fecharModal('modal-recibo')">&times;</button>
+            <div class="recibo-header">
+                <div class="recibo-check">✓</div>
+                <h3>Comprovante</h3>
+                <p>Carteira Digital · Transação Confirmada</p>
+            </div>
+            <div class="recibo-body" id="recibo-detalhes"></div>
+            <div class="recibo-footer">
+                <button class="btn-ghost" onclick="window.print()">🖨️ Imprimir PDF</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="JS/app.js"></script>
 </body>
 </html>
