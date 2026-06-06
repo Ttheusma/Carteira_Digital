@@ -1,271 +1,422 @@
-const API_URL = "http://localhost:8080/api/v1/carteiras";
-let carteiraAtual = "";
-let extratoAtual = [];
+// ═══════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════
 
-// --- CONTROLE DE INTERFACE (ONBOARDING) ---
+const API_URL = 'http://localhost:8080/api/v1/carteiras';
+
+let carteiraAtual = '';
+let extratoAtual  = [];
+
+// ═══════════════════════════════════════════════
+//  MAPEAMENTO DE MOEDAS
+// ═══════════════════════════════════════════════
+
+const COINS = {
+  BTC: { cor: '#F7931A', bg: 'rgba(245,158,11,0.15)',   nome: 'Bitcoin',          icone: '₿'  },
+  ETH: { cor: '#627EEA', bg: 'rgba(99,102,241,0.15)',   nome: 'Ethereum',         icone: 'Ξ'  },
+  SOL: { cor: '#9945FF', bg: 'rgba(16,185,129,0.15)',   nome: 'Solana',           icone: '◎'  },
+  USD: { cor: '#2775CA', bg: 'rgba(34,211,238,0.15)',   nome: 'Dólar Americano',  icone: '$'  },
+  BRL: { cor: '#34d57e', bg: 'rgba(167,139,250,0.15)',  nome: 'Real Brasileiro',  icone: 'R$' },
+};
+
+// Mapeamento idMoeda → código (formato retornado pela nossa API em /saldos)
+const ID_TO_CODIGO = { 1: 'BTC', 2: 'ETH', 3: 'SOL', 4: 'USD', 5: 'BRL' };
+
+const PANEL_TITLES = {
+  dashboard: 'Dashboard',
+  historico: 'Histórico',
+};
+
+// ═══════════════════════════════════════════════
+//  NAVEGAÇÃO ENTRE PAINÉIS (dashboard)
+// ═══════════════════════════════════════════════
+
+document.querySelectorAll('.nav-item[data-panel]').forEach(item => {
+  item.addEventListener('click', () => {
+    const panel = item.dataset.panel;
+
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + panel).classList.add('active');
+
+    document.getElementById('topbar-title').textContent = PANEL_TITLES[panel] || panel;
+
+    if (panel === 'historico') renderizarExtrato(extratoAtual);
+  });
+});
+
+// ═══════════════════════════════════════════════
+//  ALTERNÂNCIA DE TELAS (onboarding ↔ dashboard)
+// ═══════════════════════════════════════════════
+
+function alternarTelas(mostrarDashboard) {
+  const onboarding = document.getElementById('onboarding-screen');
+  const dashboard  = document.getElementById('dashboard-screen');
+
+  if (mostrarDashboard) {
+    onboarding.style.display = 'none';
+    dashboard.style.display  = 'flex';
+  } else {
+    dashboard.style.display  = 'none';
+    onboarding.style.display = '';
+    voltarOnboarding();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  ONBOARDING
+// ═══════════════════════════════════════════════
+
 function mostrarFormLogin() {
-    document.getElementById("botoes-iniciais").style.display = "none";
-    document.getElementById("form-login").style.display = "flex";
+  document.getElementById('botoes-iniciais').style.display = 'none';
+  document.getElementById('form-login').style.display      = 'flex';
 }
 
 function voltarOnboarding() {
-    document.getElementById("botoes-iniciais").style.display = "flex";
-    document.getElementById("form-login").style.display = "none";
-    document.getElementById("input-uuid").value = "";
+  document.getElementById('botoes-iniciais').style.display = 'flex';
+  document.getElementById('form-login').style.display      = 'none';
+  document.getElementById('input-uuid').value = '';
 }
 
-function alternarTelas(mostrarDashboard) {
-    const telaOnboarding = document.getElementById("onboarding-screen");
-    const telaDashboard = document.getElementById("dashboard-screen");
-
-    if (mostrarDashboard) {
-        telaOnboarding.classList.add("screen-hidden");
-        telaDashboard.classList.remove("screen-hidden");
-    } else {
-        telaDashboard.classList.add("screen-hidden");
-        telaOnboarding.classList.remove("screen-hidden");
-        voltarOnboarding();
-    }
-}
-
-// --- CONTROLE DOS MODAIS ---
-function abrirModal(idModal) {
-    const modal = document.getElementById(idModal);
-    modal.classList.remove("screen-hidden");
-    modal.style.display = "flex";
-}
-
-function fecharModal(idModal) {
-    const modal = document.getElementById(idModal);
-    modal.classList.add("screen-hidden");
-    modal.style.display = "none";
-    const form = modal.querySelector('form');
-    if(form) form.reset();
-}
-
-// --- ROTAS DA API ---
 async function criarNovaCarteira() {
-    try {
-        const resposta = await fetch(API_URL, {
-            method: "POST"
-        });
+  try {
+    const res  = await fetch(API_URL, { method: 'POST' });
+    if (!res.ok) throw new Error('Falha ao criar carteira no servidor.');
+    const data = await res.json();
 
-        if (!resposta.ok) throw new Error("Falha ao gerar nova carteira no servidor.");
+    carteiraAtual = data.enderecoCarteira || data.endereco_carteira || data.endereco;
 
-        const dados = await resposta.json();
-        carteiraAtual = dados.enderecoCarteira;
-        
-        // Exibe o Alerta Crítico exigido pela arquitetura de Segurança
-        alert(`${dados.alerta}\n\nSEU UUID (Acesso):\n${dados.enderecoCarteira}\n\nSUA CHAVE PRIVADA (Assinatura):\n${dados.chavePrivada}`);
-        carregarDashboard();
+    document.getElementById('modal-endereco').textContent  = carteiraAtual;
+    document.getElementById('modal-chave-val').textContent = data.chavePrivada || data.chave_privada || data.privateKey || '—';
+    document.getElementById('modal-nova-carteira').classList.remove('hidden');
 
-    } catch (erro) {
-        alert(erro.message);
-    }
+  } catch (e) {
+    toast('error', 'Erro ao criar carteira', e.message);
+  }
+}
+
+function fecharModalNovaCarteira() {
+  document.getElementById('modal-nova-carteira').classList.add('hidden');
+  carregarDashboard();
+}
+
+function copiarChave() {
+  const chave = document.getElementById('modal-chave-val').textContent;
+  navigator.clipboard.writeText(chave).then(() => toast('success', 'Chave copiada!', ''));
 }
 
 async function acessarCarteira() {
-    const uuid = document.getElementById("input-uuid").value.trim();
-    if (!uuid) return alert("Por favor, cole seu UUID.");
-    carteiraAtual = uuid;
-    carregarDashboard();
-}
-
-async function carregarDashboard() {
-    try {
-        const [resSaldos, resExtrato] = await Promise.all([
-            fetch(`${API_URL}/${carteiraAtual}/saldos`),
-            fetch(`${API_URL}/${carteiraAtual}/extrato`)
-        ]);
-
-        if (!resSaldos.ok) throw new Error("Carteira não encontrada. Verifique o UUID.");
-
-        const saldos = await resSaldos.json();
-        const extrato = await resExtrato.json();
-
-        renderizarSaldos(saldos);
-        renderizarExtrato(extrato);
-
-        document.getElementById("uuid-logado").innerText = `UUID: ${carteiraAtual.substring(0, 13)}...`;
-        alternarTelas(true);
-
-    } catch (erro) {
-        alert(erro.message);
-        carteiraAtual = "";
-    }
+  const uuid = document.getElementById('input-uuid').value.trim();
+  if (!uuid) { toast('error', 'Endereço obrigatório', ''); return; }
+  carteiraAtual = uuid;
+  carregarDashboard();
 }
 
 function sair() {
-    carteiraAtual = "";
-    extratoAtual = [];
-    alternarTelas(false);
+  carteiraAtual = '';
+  extratoAtual  = [];
+  alternarTelas(false);
 }
 
-// --- RENDERIZAÇÃO DE DADOS ---
-const MOEDAS_META = {
-    1: { codigo: 'BTC', nome: 'Bitcoin',          icone: '₿',  cor: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
-    2: { codigo: 'ETH', nome: 'Ethereum',          icone: 'Ξ',  cor: '#6366f1', bg: 'rgba(99,102,241,0.15)'  },
-    3: { codigo: 'SOL', nome: 'Solana',            icone: '◎',  cor: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-    4: { codigo: 'USD', nome: 'Dólar Americano',   icone: '$',  cor: '#22d3ee', bg: 'rgba(34,211,238,0.15)'  },
-    5: { codigo: 'BRL', nome: 'Real Brasileiro',   icone: 'R$', cor: '#a78bfa', bg: 'rgba(167,139,250,0.15)' }
-};
+// ═══════════════════════════════════════════════
+//  CARREGAR DASHBOARD (saldos + extrato)
+// ═══════════════════════════════════════════════
+
+async function carregarDashboard() {
+  try {
+    const [resSaldos, resExtrato] = await Promise.all([
+      fetch(`${API_URL}/${carteiraAtual}/saldos`),
+      fetch(`${API_URL}/${carteiraAtual}/extrato`),
+    ]);
+
+    if (!resSaldos.ok) throw new Error('Carteira não encontrada. Verifique o endereço.');
+
+    const saldos  = await resSaldos.json();
+    const extrato = resExtrato.ok ? await resExtrato.json() : [];
+
+    renderizarSaldos(Array.isArray(saldos) ? saldos : (saldos.saldos || []));
+    extratoAtual = Array.isArray(extrato) ? extrato : (extrato.movimentos || extrato.items || []);
+
+    const curto = carteiraAtual.length > 26
+      ? carteiraAtual.slice(0, 13) + '...' + carteiraAtual.slice(-6)
+      : carteiraAtual;
+    document.getElementById('sidebar-addr').innerHTML = `<span>${curto}</span>`;
+    document.getElementById('topbar-status').style.display = 'inline-block';
+
+    alternarTelas(true);
+
+  } catch (e) {
+    toast('error', 'Acesso negado', e.message);
+    carteiraAtual = '';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDERIZAÇÃO — SALDOS
+// ═══════════════════════════════════════════════
 
 function renderizarSaldos(listaSaldos) {
-    const container = document.getElementById("cards-saldo");
-    container.innerHTML = "";
-    listaSaldos.forEach(item => {
-        const meta = MOEDAS_META[item.idMoeda] || { codigo: '?', nome: 'Moeda', icone: '?', cor: '#94a3b8', bg: 'rgba(148,163,184,0.15)' };
-        container.innerHTML += `
-            <div class="card-saldo">
-                <div class="card-saldo-info">
-                    <div class="card-saldo-icon" style="background:${meta.bg}; color:${meta.cor}">${meta.icone}</div>
-                    <div>
-                        <h4>${meta.codigo}</h4>
-                        <span class="nome-moeda">${meta.nome}</span>
-                    </div>
-                </div>
-                <p class="valor">${parseFloat(item.saldo).toFixed(8)}</p>
-            </div>
-        `;
-    });
-}
+  const grid = document.getElementById('balances-grid');
 
-function renderizarExtrato(listaExtrato) {
-    extratoAtual = listaExtrato; 
-    const tbody = document.getElementById("corpo-extrato");
-    tbody.innerHTML = "";
-    
-    if(listaExtrato.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='6' style='text-align: center; padding: 30px;'>Nenhuma transação encontrada.</td></tr>";
-        return;
-    }
+  if (!listaSaldos || listaSaldos.length === 0) {
+    grid.innerHTML = `<div class="balance-card" style="grid-column:1/-1">
+      <div class="empty-state">Nenhum saldo encontrado.</div></div>`;
+    return;
+  }
 
-    listaExtrato.forEach((tx, index) => {
-        const dataFormatada = new Date(tx.dataHora).toLocaleString('pt-PT');
-        const operacaoLimpa = tx.tipoOperacao.replace('_', ' ');
+  grid.innerHTML = listaSaldos.map(item => {
+    // Suporta { moeda: { codigo } }, { codigo }, { idMoeda } (formato da nossa API)
+    const codigo = item.moeda?.codigo || item.codigo || item.currency || ID_TO_CODIGO[item.idMoeda] || '';
+    const saldo  = parseFloat(item.saldo ?? item.balance ?? 0);
+    const coin   = COINS[codigo] || { cor: '#7a7f94', bg: 'rgba(148,163,184,0.15)', nome: codigo, icone: '?' };
+    const casas  = (codigo === 'BRL' || codigo === 'USD') ? 2 : 8;
 
-        const meta = Object.values(MOEDAS_META).find(m => m.codigo === tx.moeda.codigo) || { cor: '#94a3b8' };
-        tbody.innerHTML += `
-            <tr>
-                <td style="color:#64748b; font-size:12px">${dataFormatada}</td>
-                <td><strong style="color:#e2e8f0">${operacaoLimpa}</strong></td>
-                <td><span style="color:${meta.cor}; font-weight:600">${tx.moeda.codigo}</span></td>
-                <td style="font-family:'Courier New',monospace; color:#a78bfa">${parseFloat(tx.valor).toFixed(8)}</td>
-                <td class="taxa">${tx.taxaCobrada > 0 ? '- ' + parseFloat(tx.taxaCobrada).toFixed(8) : '<span style="color:#10b981">Isento</span>'}</td>
-                <td><button style="background:rgba(124,58,237,0.2);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer" onclick="abrirRecibo(${index})">🧾 Ver</button></td>
-            </tr>
-        `;
-    });
-}
-
-// --- RENDERIZAÇÃO DO COMPROVANTE ---
-function abrirRecibo(index) {
-    const tx = extratoAtual[index]; 
-    const dataFormatada = new Date(tx.dataHora).toLocaleString('pt-PT');
-    const operacaoLimpa = tx.tipoOperacao.replace('_', ' ');
-    const corpoRecibo = document.getElementById("recibo-detalhes");
-
-    corpoRecibo.innerHTML = `
-        <p><span>Data/Hora:</span> <strong>${dataFormatada}</strong></p>
-        <p><span>Operação:</span> <strong>${operacaoLimpa}</strong></p>
-        <p><span>Moeda:</span> <strong>${tx.moeda.codigo}</strong></p>
-        <p><span>Valor Bruto:</span> <strong>${tx.valor}</strong></p>
-        <p><span>Taxa do Sistema:</span> <strong>${tx.taxaCobrada > 0 ? tx.taxaCobrada : 'Isento'}</strong></p>
-        <div style="margin-top: 15px; border-top: 1px dotted #ccc; padding-top: 10px;">
-            <p style="font-size: 12px; margin-bottom: 2px;"><span>Conta Base (UUID):</span></p>
-            <p style="font-size: 11px; word-break: break-all;"><strong>${carteiraAtual}</strong></p>
-            <p style="font-size: 12px; margin-top: 10px; margin-bottom: 2px;"><span>ID da Transação:</span></p>
-            <p style="font-size: 11px; word-break: break-all;"><strong>${tx.id ? tx.id : 'Autenticador-CD-' + Math.floor(Math.random() * 100000)}</strong></p>
+    return `
+      <div class="balance-card">
+        <div class="balance-coin">
+          <span class="coin-dot" style="background:${coin.cor}"></span>
+          ${codigo}
         </div>
-    `;
-
-    abrirModal('modal-recibo');
+        <div class="balance-val">${saldo.toFixed(casas)}</div>
+        <div class="balance-fiat">${coin.nome}</div>
+      </div>`;
+  }).join('');
 }
 
-// --- INTEGRAÇÃO DAS OPERAÇÕES COM O BACKEND ---
+// ═══════════════════════════════════════════════
+//  RENDERIZAÇÃO — EXTRATO / HISTÓRICO
+// ═══════════════════════════════════════════════
+
+function renderizarExtrato(lista) {
+  const container = document.getElementById('hist-content');
+
+  if (!lista || lista.length === 0) {
+    container.innerHTML = '<div class="empty-state">Nenhuma transação encontrada.</div>';
+    return;
+  }
+
+  const badgeMap = {
+    DEPOSITO:              'badge-dep',
+    SAQUE:                 'badge-saq',
+    CONVERSAO:             'badge-conv',
+    TRANSFERENCIA:         'badge-trans',
+    'TRANSFERENCIA ENVIADA':  'badge-trans',
+    'TRANSFERENCIA RECEBIDA': 'badge-trans',
+  };
+
+  const rows = lista.map((tx, index) => {
+    const tipo  = (tx.tipo || tx.tipoOperacao || tx.type || '').toUpperCase().replace(/_/g, ' ');
+    const moeda = tx.moeda?.codigo || tx.codigo || tx.currency || '';
+    const valor = parseFloat(tx.valor ?? tx.value ?? 0).toFixed(8);
+    const taxa  = parseFloat(tx.taxaValor ?? tx.taxaCobrada ?? tx.taxa_valor ?? 0);
+    const dt    = tx.dataHora || tx.data_hora || tx.createdAt || '';
+    const badge = badgeMap[tipo] || 'badge-dep';
+
+    return `
+      <tr>
+        <td style="color:var(--muted);font-size:11px">${dt ? new Date(dt).toLocaleString('pt-BR') : '—'}</td>
+        <td><span class="badge ${badge}">${tipo}</span></td>
+        <td style="color:${COINS[moeda]?.cor || 'var(--text)'}; font-weight:600">${moeda}</td>
+        <td style="font-family:var(--font-mono);color:var(--purple)">${valor}</td>
+        <td class="taxa">${taxa > 0
+          ? `<span style="color:var(--coral)">- ${taxa.toFixed(8)}</span>`
+          : `<span style="color:var(--green)">Isento</span>`
+        }</td>
+        <td>
+          <button class="btn-recibo" onclick="abrirRecibo(${index})">🧾 Ver</button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="hist-table">
+      <thead>
+        <tr>
+          <th>Data/Hora</th>
+          <th>Operação</th>
+          <th>Moeda</th>
+          <th>Valor</th>
+          <th>Taxa</th>
+          <th>Comprovante</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ═══════════════════════════════════════════════
+//  COMPROVANTE
+// ═══════════════════════════════════════════════
+
+function abrirRecibo(index) {
+  const tx   = extratoAtual[index];
+  const tipo = (tx.tipo || tx.tipoOperacao || '').replace(/_/g, ' ');
+  const dt   = tx.dataHora || tx.data_hora || tx.createdAt || '';
+  const taxa = parseFloat(tx.taxaValor ?? tx.taxaCobrada ?? 0);
+
+  document.getElementById('recibo-detalhes').innerHTML = `
+    <div class="recibo-linha"><span>Data/Hora</span><strong>${dt ? new Date(dt).toLocaleString('pt-BR') : '—'}</strong></div>
+    <div class="recibo-linha"><span>Operação</span><strong>${tipo.toUpperCase()}</strong></div>
+    <div class="recibo-linha"><span>Moeda</span><strong>${tx.moeda?.codigo || tx.codigo || ''}</strong></div>
+    <div class="recibo-linha"><span>Valor Bruto</span><strong style="font-family:var(--font-mono)">${parseFloat(tx.valor ?? 0).toFixed(8)}</strong></div>
+    <div class="recibo-linha"><span>Taxa</span><strong>${taxa > 0 ? taxa.toFixed(8) : 'Isento'}</strong></div>
+    <div class="recibo-divider"></div>
+    <div class="recibo-linha"><span>Carteira</span></div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--accent);word-break:break-all;margin-bottom:8px">${carteiraAtual}</div>
+    <div class="recibo-linha"><span>ID da Transação</span></div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);word-break:break-all">${tx.id || 'CD-' + Math.floor(Math.random() * 1e6)}</div>
+  `;
+
+  abrirModal('modal-recibo');
+}
+
+// ═══════════════════════════════════════════════
+//  MODAIS
+// ═══════════════════════════════════════════════
+
+function abrirModal(id) {
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function fecharModal(id) {
+  document.getElementById(id).classList.add('hidden');
+  document.getElementById(id).querySelectorAll('input, select').forEach(el => {
+    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    else el.value = '';
+  });
+}
+
+// Fechar modal clicando fora
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+});
+
+// ═══════════════════════════════════════════════
+//  API HELPER
+// ═══════════════════════════════════════════════
+
 async function dispararRequisicao(endpoint, payload) {
-    const resposta = await fetch(`${API_URL}/${carteiraAtual}/${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+  const res = await fetch(`${API_URL}/${carteiraAtual}/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.mensagem || err.erro || err.message || err.error || 'Falha na operação.');
+  }
+
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════
+//  OPERAÇÕES
+// ═══════════════════════════════════════════════
+
+async function realizarDeposito() {
+  const valor = parseFloat(document.getElementById('dep-valor').value);
+  const moeda = document.getElementById('dep-moeda').value;
+
+  if (!valor || valor <= 0) { toast('error', 'Valor inválido', ''); return; }
+
+  try {
+    await dispararRequisicao('depositos', { codigoMoeda: moeda, valor });
+    fecharModal('modal-deposito');
+    toast('success', 'Depósito realizado!', `${valor} ${moeda} adicionados.`);
+    carregarDashboard();
+  } catch (e) {
+    toast('error', 'Erro no depósito', e.message);
+  }
+}
+
+async function realizarSaque() {
+  const valor = parseFloat(document.getElementById('saq-valor').value);
+  const moeda = document.getElementById('saq-moeda').value;
+  const chave = document.getElementById('saq-chave').value.trim();
+
+  if (!valor || valor <= 0) { toast('error', 'Valor inválido', '');            return; }
+  if (!chave)                { toast('error', 'Chave privada obrigatória', ''); return; }
+
+  try {
+    await dispararRequisicao('saques', { codigoMoeda: moeda, valor, chavePrivada: chave });
+    fecharModal('modal-saque');
+    toast('success', 'Saque realizado!', `${valor} ${moeda} sacados.`);
+    carregarDashboard();
+  } catch (e) {
+    toast('error', 'Erro no saque', e.message);
+  }
+}
+
+async function realizarCambio() {
+  const valor   = parseFloat(document.getElementById('cambio-valor').value);
+  const origem  = document.getElementById('cambio-origem').value;
+  const destino = document.getElementById('cambio-destino').value;
+  const chave   = document.getElementById('cambio-chave').value.trim();
+
+  if (!valor || valor <= 0)    { toast('error', 'Valor inválido', '');                         return; }
+  if (!origem || !destino)     { toast('error', 'Selecione as moedas', '');                     return; }
+  if (origem === destino)      { toast('error', 'Moedas iguais', 'Escolha moedas diferentes.'); return; }
+  if (!chave)                  { toast('error', 'Chave privada obrigatória', '');               return; }
+
+  try {
+    await dispararRequisicao('conversoes', {
+      moedaOrigem:  origem,
+      moedaDestino: destino,
+      valorOrigem:  valor,
+      chavePrivada: chave,
     });
-
-    if (!resposta.ok) {
-        const erroJson = await resposta.json();
-        throw new Error(erroJson.erro || erroJson.message || "Assinatura Rejeitada ou Falha na regra de negócio.");
-    }
-    return await resposta.json();
+    fecharModal('modal-cambio');
+    toast('success', 'Câmbio realizado!', `${valor} ${origem} → ${destino}`);
+    carregarDashboard();
+  } catch (e) {
+    toast('error', 'Erro no câmbio', e.message);
+  }
 }
 
-async function realizarDeposito(event) {
-    event.preventDefault();
-    const valor = parseFloat(document.getElementById("dep-valor").value);
-    const moeda = document.getElementById("dep-moeda").value;
+async function realizarTransferencia() {
+  const destino = document.getElementById('transf-destino').value.trim();
+  const moeda   = document.getElementById('transf-moeda').value;
+  const valor   = parseFloat(document.getElementById('transf-valor').value);
+  const chave   = document.getElementById('transf-chave').value.trim();
 
-    try {
-        await dispararRequisicao("depositos", { codigoMoeda: moeda, valor: valor });
-        fecharModal('modal-deposito');
-        carregarDashboard();
-    } catch (erro) {
-        alert("Erro no Depósito: " + erro.message);
-    }
+  if (!destino)              { toast('error', 'Endereço de destino obrigatório', ''); return; }
+  if (!valor || valor <= 0)  { toast('error', 'Valor inválido', '');                  return; }
+  if (!chave)                { toast('error', 'Chave privada obrigatória', '');       return; }
+
+  try {
+    await dispararRequisicao('transferencias', {
+      enderecoDestino: destino,
+      codigoMoeda:     moeda,
+      valor,
+      chavePrivada:    chave,
+    });
+    fecharModal('modal-transferencia');
+    toast('success', 'Transferência realizada!', `${valor} ${moeda} enviados.`);
+    carregarDashboard();
+  } catch (e) {
+    toast('error', 'Erro na transferência', e.message);
+  }
 }
 
-async function realizarSaque(event) {
-    event.preventDefault();
-    const valor = parseFloat(document.getElementById("saq-valor").value);
-    const moeda = document.getElementById("saq-moeda").value;
-    const chave = document.getElementById("saq-chave").value.trim();
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
 
-    try {
-        await dispararRequisicao("saques", { codigoMoeda: moeda, valor: valor, chavePrivada: chave });
-        fecharModal('modal-saque');
-        carregarDashboard();
-    } catch (erro) {
-        alert("Erro no Saque: " + erro.message);
-    }
-}
-
-async function realizarTransferencia(event) {
-    event.preventDefault();
-    const destino = document.getElementById("transf-destino").value.trim();
-    const valor = parseFloat(document.getElementById("transf-valor").value);
-    const moeda = document.getElementById("transf-moeda").value;
-    const chave = document.getElementById("transf-chave").value.trim();
-
-    try {
-        await dispararRequisicao("transferencias", { 
-            enderecoDestino: destino, 
-            codigoMoeda: moeda, 
-            valor: valor,
-            chavePrivada: chave 
-        });
-        fecharModal('modal-transferencia');
-        carregarDashboard();
-    } catch (erro) {
-        alert("Erro na Transferência: " + erro.message);
-    }
-}
-
-async function realizarCambio(event) {
-    event.preventDefault();
-    const valor = parseFloat(document.getElementById("cambio-valor").value);
-    const origem = document.getElementById("cambio-origem").value;
-    const destino = document.getElementById("cambio-destino").value;
-    const chave = document.getElementById("cambio-chave").value.trim();
-
-    if(origem === destino) return alert("As moedas de origem e destino devem ser diferentes.");
-
-    try {
-        await dispararRequisicao("conversoes", { 
-            moedaOrigem: origem, 
-            moedaDestino: destino, 
-            valorOrigem: valor,
-            chavePrivada: chave
-        });
-        fecharModal('modal-cambio');
-        carregarDashboard();
-    } catch (erro) {
-        alert("Erro no Câmbio: " + erro.message);
-    }
+function toast(type, title, msg) {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `
+    <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      ${msg ? `<div class="toast-msg">${msg}</div>` : ''}
+    </div>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 5000);
 }
