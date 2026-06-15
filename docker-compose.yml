@@ -19,7 +19,7 @@ services:
     image: theusmanun/carteira-frontend:latest
     container_name: carteira_frontend
     ports:
-      - "${FRONTEND_PUBLISH_PORT}:8080"
+      - "80:8080"
     networks:
       - frontend_net
     restart: unless-stopped
@@ -32,16 +32,19 @@ services:
     container_name: carteira_backend
     ports:
       - "8080:8080"
-    env_file:
-      - .env
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${DB_NAME}
-      - SPRING_DATASOURCE_USERNAME=${DB_APP_USER}
-      - SPRING_DATASOURCE_PASSWORD=${DB_APP_PASSWORD}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/wallet_homolog
+      - SPRING_DATASOURCE_USERNAME=wallet_api_homolog
+      - SPRING_DATASOURCE_PASSWORD=api123
       - SPRING_PROFILES_ACTIVE=prod
-      - TAXA_SAQUE_PERCENTUAL=${TAXA_SAQUE_PERCENTUAL}
-      - TAXA_CONVERSAO_PERCENTUAL=${TAXA_CONVERSAO_PERCENTUAL}
-      - TAXA_TRANSFERENCIA_PERCENTUAL=${TAXA_TRANSFERENCIA_PERCENTUAL}
+      - DB_NAME=wallet_homolog
+      - DB_APP_USER=wallet_api_homolog
+      - DB_APP_PASSWORD=api123
+      - TAXA_SAQUE_PERCENTUAL=0.01
+      - TAXA_CONVERSAO_PERCENTUAL=0.02
+      - TAXA_TRANSFERENCIA_PERCENTUAL=0.01
+      - PRIVATE_KEY_SIZE=32
+      - PUBLIC_KEY_SIZE=16
     networks:
       - frontend_net
       - backend_net
@@ -70,12 +73,12 @@ services:
     ports:
       - "5433:5432"
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_ROOT_USER}
-      - POSTGRES_PASSWORD=${DB_ROOT_PASSWORD}
+      - POSTGRES_DB=wallet_homolog
+      - POSTGRES_USER=db_admin_root
+      - POSTGRES_PASSWORD=SuperSecureRootPassword2026!
       - POSTGRES_HOST_AUTH_METHOD=md5
-      - DB_APP_USER=${DB_APP_USER}
-      - DB_APP_PASSWORD=${DB_APP_PASSWORD}
+      - DB_APP_USER=wallet_api_homolog
+      - DB_APP_PASSWORD=api123
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -83,7 +86,7 @@ services:
       - db_admin_net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${DB_ROOT_USER}", "-d", "${DB_NAME}"]
+      test: ["CMD", "pg_isready", "-U", "db_admin_root", "-d", "wallet_homolog"]
       interval: 5s
       timeout: 5s
       retries: 30
