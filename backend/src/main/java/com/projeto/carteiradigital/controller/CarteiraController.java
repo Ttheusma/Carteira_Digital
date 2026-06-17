@@ -1,5 +1,6 @@
 package com.projeto.carteiradigital.controller;
 
+import com.projeto.carteiradigital.dto.AcessoDto;
 import com.projeto.carteiradigital.model.Carteira;
 import com.projeto.carteiradigital.service.CarteiraService;
 import com.projeto.carteiradigital.util.CryptoUtils;
@@ -56,6 +57,19 @@ public class CarteiraController {
         Optional<Carteira> carteira = carteiraService.buscarPorEndereco(enderecoCarteira);
         return carteira.map(ResponseEntity::ok)
                        .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // --- LOGIN (Endereço da Carteira) ---
+    // O usuário informa o endereço (chave de acesso); a chave privada (maior)
+    // é exigida só nas operações (saque, câmbio, transferência).
+    // Lança AcessoNegadoException (403) se o endereço não existir.
+    @PostMapping("/acesso")
+    public ResponseEntity<Map<String, String>> validarAcesso(@RequestBody AcessoDto dto) {
+        Carteira carteira = carteiraService.validarAcessoPorEndereco(dto.getEnderecoCarteira());
+        return ResponseEntity.ok(Map.of(
+                "enderecoCarteira", carteira.getEnderecoCarteira(),
+                "mensagem", "Acesso concedido."
+        ));
     }
 
     /**

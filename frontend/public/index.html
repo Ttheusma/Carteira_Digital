@@ -44,8 +44,8 @@
 
       <!-- Formulário de login -->
       <div class="login-form" id="form-login" style="display:none">
-        <label class="form-label">Endereço da Carteira</label>
-        <input class="form-control" type="text" id="input-uuid" placeholder="Cole o endereço da sua carteira..." />
+        <label class="form-label">🔑 Endereço da Carteira</label>
+        <input class="form-control" type="text" id="input-endereco-acesso" placeholder="Cole o endereço da sua carteira..." autocomplete="off" />
         <button class="btn btn-blue" style="width:100%;margin-top:8px" onclick="acessarCarteira()">
           🚀 Acessar
         </button>
@@ -219,7 +219,7 @@
     </div>
     <div class="form-group">
       <label class="form-label">Valor</label>
-      <input class="form-control" type="number" id="dep-valor" placeholder="0.00000000" step="0.00000001" />
+      <input class="form-control" type="text" inputmode="numeric" id="dep-valor" placeholder="0,00" data-casas="2" />
     </div>
     <div class="form-group">
       <label class="form-label">Moeda</label>
@@ -248,7 +248,7 @@
     </div>
     <div class="form-group">
       <label class="form-label">Valor</label>
-      <input class="form-control" type="number" id="saq-valor" placeholder="0.00000000" step="0.00000001" />
+      <input class="form-control" type="text" inputmode="numeric" id="saq-valor" placeholder="0,00" data-casas="2" />
     </div>
     <div class="form-group">
       <label class="form-label">Moeda</label>
@@ -282,7 +282,7 @@
     </div>
     <div class="form-group">
       <label class="form-label">Valor a Converter</label>
-      <input class="form-control" type="number" id="cambio-valor" placeholder="0.00000000" step="0.00000001" />
+      <input class="form-control" type="text" inputmode="numeric" id="cambio-valor" placeholder="0,00000000" data-casas="8" />
     </div>
     <div class="form-row form-group">
       <div>
@@ -344,7 +344,7 @@
       </div>
       <div>
         <label class="form-label">Valor</label>
-        <input class="form-control" type="number" id="transf-valor" placeholder="0.00000000" step="0.00000001" />
+        <input class="form-control" type="text" inputmode="numeric" id="transf-valor" placeholder="0,00" data-casas="2" />
       </div>
     </div>
     <div class="form-group">
@@ -353,6 +353,32 @@
     </div>
     <button class="btn btn-purple" onclick="realizarTransferencia()">📤 Transferir Fundos</button>
     <div class="fee-note">a carteira destino recebe o valor sem desconto</div>
+  </div>
+</div>
+
+<!-- Nova Carteira Criada -->
+<div id="modal-nova-carteira" class="modal-overlay hidden">
+  <div class="modal">
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div style="width:52px;height:52px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px">✅</div>
+      <div class="modal-title">Carteira Criada</div>
+      <div class="modal-sub">Guarde sua chave privada — ela não pode ser recuperada depois</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">🔑 Endereço (Acesso)</label>
+      <div class="chave-display" id="novo-endereco"></div>
+      <button class="btn btn-outline" style="width:100%;margin-top:6px" onclick="copiarCampo('novo-endereco')">📋 Copiar Endereço</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">🔐 Chave Privada (Assinatura)</label>
+      <div class="chave-display" id="novo-chave-privada"></div>
+      <button class="btn btn-outline" style="width:100%;margin-top:6px" onclick="copiarCampo('novo-chave-privada')">📋 Copiar Chave Privada</button>
+    </div>
+
+    <div class="fee-note">⚠️ Esta chave aparece só agora. Copie e guarde em local seguro antes de continuar.</div>
+    <button class="btn btn-blue" style="width:100%;margin-top:1rem" onclick="fecharModalNovaCarteira()">Entendi, continuar</button>
   </div>
 </div>
 

@@ -43,6 +43,20 @@ const COINS = {
 
 const ID_TO_CODIGO = { 1: 'BTC', 2: 'ETH', 3: 'SOL', 4: 'USD', 5: 'BRL' };
 
+// ═══════════════════════════════════════════════
+//  FORMATAÇÃO MONETÁRIA — padrão único para toda a aplicação
+//  (saldos, extrato, comprovantes e mensagens de operação)
+// ═══════════════════════════════════════════════
+function formatarMoeda(valor, codigo) {
+    const coin   = COINS[codigo] || { icone: codigo };
+    const casas  = (codigo === 'BRL' || codigo === 'USD') ? 2 : 8;
+    const numero = parseFloat(valor || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas,
+    });
+    return `${coin.icone} ${numero}`;
+}
+
 const PANEL_TITLES = { dashboard: 'Dashboard', historico: 'Histórico' };
 
 // ═══════════════════════════════════════════════
@@ -90,7 +104,7 @@ function mostrarFormLogin() {
 function voltarOnboarding() {
     document.getElementById('botoes-iniciais').style.display = 'flex';
     document.getElementById('form-login').style.display      = 'none';
-    document.getElementById('input-uuid').value = '';
+    document.getElementById('input-endereco-acesso').value = '';
 }
 
 async function criarNovaCarteira() {
@@ -100,23 +114,57 @@ async function criarNovaCarteira() {
         const data = await res.json();
         carteiraAtual = data.enderecoCarteira;
 
-        alert(
-            `${data.alerta}\n\n` +
-            `ENDEREÇO (Acesso):\n${data.enderecoCarteira}\n\n` +
-            `CHAVE PRIVADA (Assinatura):\n${data.chavePrivada}`
-        );
-
-        carregarDashboard();
+        document.getElementById('novo-endereco').textContent      = data.enderecoCarteira;
+        document.getElementById('novo-chave-privada').textContent = data.chavePrivada;
+        abrirModal('modal-nova-carteira');
     } catch (e) {
         toast('error', 'Erro ao criar carteira', e.message);
     }
 }
 
-async function acessarCarteira() {
-    const uuid = document.getElementById('input-uuid').value.trim();
-    if (!uuid) { toast('error', 'Endereço obrigatório', ''); return; }
-    carteiraAtual = uuid;
+function fecharModalNovaCarteira() {
+    document.getElementById('modal-nova-carteira').classList.add('hidden');
+    document.getElementById('novo-endereco').textContent      = '';
+    document.getElementById('novo-chave-privada').textContent = '';
     carregarDashboard();
+}
+
+async function copiarCampo(id) {
+    const el = document.getElementById(id);
+    const valor = ('value' in el) ? el.value : el.textContent;
+    try {
+        await navigator.clipboard.writeText(valor);
+    } catch (e) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.execCommand('copy');
+        selection.removeAllRanges();
+    }
+    toast('success', 'Copiado!', '');
+}
+
+async function acessarCarteira() {
+    const endereco = document.getElementById('input-endereco-acesso').value.trim();
+    if (!endereco) { toast('error', 'Endereço da carteira obrigatório', ''); return; }
+    try {
+        const res = await fetch(`${API_URL}/acesso`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enderecoCarteira: endereco }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.mensagem || err.erro || 'Endereço inválido.');
+        }
+        const data = await res.json();
+        carteiraAtual = data.enderecoCarteira;
+        carregarDashboard();
+    } catch (e) {
+        toast('error', 'Acesso negado', e.message);
+    }
 }
 
 function sair() {
@@ -172,9 +220,8 @@ function renderizarSaldos(listaSaldos) {
 
     grid.innerHTML = listaSaldos.map(item => {
         const codigo = item.moeda?.codigo || item.codigo || ID_TO_CODIGO[item.idMoeda] || '';
-        const saldo  = parseFloat(item.saldo ?? 0);
-        const coin   = COINS[codigo] || { cor: '#7a7f94', nome: codigo, icone: '?' };
-        const casas  = (codigo === 'BRL' || codigo === 'USD') ? 2 : 8;
+        const saldo  = item.saldo ?? 0;
+        const coin   = COINS[codigo] || { cor: '#7a7f94', nome: codigo, icone: codigo };
 
         return `
             <div class="balance-card">
@@ -182,7 +229,7 @@ function renderizarSaldos(listaSaldos) {
                     <span class="coin-dot" style="background:${coin.cor}"></span>
                     ${codigo}
                 </div>
-                <div class="balance-val">${saldo.toFixed(casas)}</div>
+                <div class="balance-val">${formatarMoeda(saldo, codigo)}</div>
                 <div class="balance-fiat">${coin.nome}</div>
             </div>`;
     }).join('');
@@ -212,7 +259,6 @@ function renderizarExtrato(lista) {
     const rows = lista.map((tx, index) => {
         const tipo  = (tx.tipo || tx.tipoOperacao || '').toUpperCase().replace(/_/g, ' ');
         const moeda = tx.moeda?.codigo || tx.codigo || '';
-        const valor = parseFloat(tx.valor ?? 0).toFixed(8);
         const taxa  = parseFloat(tx.taxaValor ?? tx.taxaCobrada ?? 0);
         const dt    = tx.dataHora || tx.data_hora || '';
         const badge = badgeMap[tipo] || 'badge-dep';
@@ -222,9 +268,9 @@ function renderizarExtrato(lista) {
                 <td style="color:var(--muted);font-size:11px">${dt ? new Date(dt).toLocaleString('pt-BR') : '—'}</td>
                 <td><span class="badge ${badge}">${tipo}</span></td>
                 <td style="color:${COINS[moeda]?.cor || 'var(--text)'};font-weight:600">${moeda}</td>
-                <td style="font-family:var(--font-mono);color:var(--purple)">${valor}</td>
+                <td style="font-family:var(--font-mono);color:var(--purple)">${formatarMoeda(tx.valor, moeda)}</td>
                 <td class="taxa">${taxa > 0
-                    ? `<span style="color:var(--coral)">- ${taxa.toFixed(8)}</span>`
+                    ? `<span style="color:var(--coral)">- ${formatarMoeda(taxa, moeda)}</span>`
                     : `<span style="color:var(--green)">Isento</span>`
                 }</td>
                 <td><button class="btn-recibo" onclick="abrirRecibo(${index})">🧾 Ver</button></td>
@@ -248,17 +294,18 @@ function renderizarExtrato(lista) {
 // ═══════════════════════════════════════════════
 
 function abrirRecibo(index) {
-    const tx   = extratoAtual[index];
-    const tipo = (tx.tipo || tx.tipoOperacao || '').replace(/_/g, ' ');
-    const dt   = tx.dataHora || tx.data_hora || '';
-    const taxa = parseFloat(tx.taxaValor ?? tx.taxaCobrada ?? 0);
+    const tx    = extratoAtual[index];
+    const tipo  = (tx.tipo || tx.tipoOperacao || '').replace(/_/g, ' ');
+    const dt    = tx.dataHora || tx.data_hora || '';
+    const moeda = tx.moeda?.codigo || tx.codigo || '';
+    const taxa  = parseFloat(tx.taxaValor ?? tx.taxaCobrada ?? 0);
 
     document.getElementById('recibo-detalhes').innerHTML = `
         <div class="recibo-linha"><span>Data/Hora</span><strong>${dt ? new Date(dt).toLocaleString('pt-BR') : '—'}</strong></div>
         <div class="recibo-linha"><span>Operação</span><strong>${tipo.toUpperCase()}</strong></div>
-        <div class="recibo-linha"><span>Moeda</span><strong>${tx.moeda?.codigo || tx.codigo || ''}</strong></div>
-        <div class="recibo-linha"><span>Valor</span><strong style="font-family:var(--font-mono)">${parseFloat(tx.valor ?? 0).toFixed(8)}</strong></div>
-        <div class="recibo-linha"><span>Taxa</span><strong>${taxa > 0 ? taxa.toFixed(8) : 'Isento'}</strong></div>
+        <div class="recibo-linha"><span>Moeda</span><strong>${moeda}</strong></div>
+        <div class="recibo-linha"><span>Valor</span><strong style="font-family:var(--font-mono)">${formatarMoeda(tx.valor, moeda)}</strong></div>
+        <div class="recibo-linha"><span>Taxa</span><strong style="font-family:var(--font-mono)">${taxa > 0 ? formatarMoeda(taxa, moeda) : 'Isento'}</strong></div>
         <div class="recibo-divider"></div>
         <div class="recibo-linha"><span>Carteira</span></div>
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--accent);word-break:break-all;margin-bottom:8px">${carteiraAtual}</div>`;
@@ -275,8 +322,12 @@ function abrirModal(id) { document.getElementById(id).classList.remove('hidden')
 function fecharModal(id) {
     document.getElementById(id).classList.add('hidden');
     document.getElementById(id).querySelectorAll('input, select').forEach(el => {
-        if (el.tagName === 'SELECT') el.selectedIndex = 0;
-        else el.value = '';
+        if (el.tagName === 'SELECT') {
+            el.selectedIndex = 0;
+            el.dispatchEvent(new Event('change'));
+        } else {
+            el.value = '';
+        }
     });
 }
 
@@ -284,6 +335,74 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
         if (e.target === overlay) overlay.classList.add('hidden');
     });
+});
+
+// ═══════════════════════════════════════════════
+//  MÁSCARA MONETÁRIA NOS CAMPOS DE VALOR
+//  Mesma regra de casas decimais usada em formatarMoeda():
+//  2 casas para BRL/USD, 8 casas para criptos.
+//  O campo é text (não number) para poder exibir separador
+//  de milhar/decimal em tempo real enquanto o usuário digita.
+// ═══════════════════════════════════════════════
+
+// Lê o valor numérico real de um campo mascarado (remove pontos de milhar, troca vírgula por ponto)
+function lerValorMoeda(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return 0;
+    const bruto = input.value.replace(/\./g, '').replace(',', '.');
+    return parseFloat(bruto || '0');
+}
+
+// Reformata o conteúdo do campo a cada tecla digitada
+function aplicarMascaraMoeda(e) {
+    const input = e.target;
+    const casas = parseInt(input.dataset.casas || '2', 10);
+    const digitos = input.value.replace(/\D/g, '');
+
+    if (!digitos) { input.value = ''; return; }
+
+    const valor = parseInt(digitos, 10) / Math.pow(10, casas);
+    input.value = valor.toLocaleString('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas,
+    });
+}
+
+// Ajusta a quantidade de casas decimais quando a moeda selecionada muda,
+// reformatando o valor já digitado (sem perdê-lo) para a nova precisão.
+function ajustarPrecisaoInput(inputId, codigo) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const casas = (codigo === 'BRL' || codigo === 'USD') ? 2 : 8;
+    const valorAtual = lerValorMoeda(inputId);
+
+    input.dataset.casas = casas;
+    input.placeholder = (0).toLocaleString('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas,
+    });
+
+    if (valorAtual > 0) {
+        input.value = valorAtual.toLocaleString('pt-BR', {
+            minimumFractionDigits: casas,
+            maximumFractionDigits: casas,
+        });
+    }
+}
+
+[
+    ['dep-moeda', 'dep-valor'],
+    ['saq-moeda', 'saq-valor'],
+    ['cambio-origem', 'cambio-valor'],
+    ['transf-moeda', 'transf-valor'],
+].forEach(([selectId, inputId]) => {
+    const select = document.getElementById(selectId);
+    const input  = document.getElementById(inputId);
+    if (!select || !input) return;
+
+    input.addEventListener('input', aplicarMascaraMoeda);
+    select.addEventListener('change', () => ajustarPrecisaoInput(inputId, select.value));
+    if (select.value) ajustarPrecisaoInput(inputId, select.value);
 });
 
 // ═══════════════════════════════════════════════
@@ -308,19 +427,19 @@ async function dispararRequisicao(endpoint, payload) {
 // ═══════════════════════════════════════════════
 
 async function realizarDeposito() {
-    const valor = parseFloat(document.getElementById('dep-valor').value);
+    const valor = lerValorMoeda('dep-valor');
     const moeda = document.getElementById('dep-moeda').value;
     if (!valor || valor <= 0) { toast('error', 'Valor inválido', ''); return; }
     try {
         await dispararRequisicao('depositos', { codigoMoeda: moeda, valor });
         fecharModal('modal-deposito');
-        toast('success', 'Depósito realizado!', `${valor} ${moeda} adicionados.`);
+        toast('success', 'Depósito realizado!', `${formatarMoeda(valor, moeda)} adicionados.`);
         carregarDashboard();
     } catch (e) { toast('error', 'Erro no depósito', e.message); }
 }
 
 async function realizarSaque() {
-    const valor = parseFloat(document.getElementById('saq-valor').value);
+    const valor = lerValorMoeda('saq-valor');
     const moeda = document.getElementById('saq-moeda').value;
     const chave = document.getElementById('saq-chave').value.trim();
     if (!valor || valor <= 0) { toast('error', 'Valor inválido', ''); return; }
@@ -328,13 +447,13 @@ async function realizarSaque() {
     try {
         await dispararRequisicao('saques', { codigoMoeda: moeda, valor, chavePrivada: chave });
         fecharModal('modal-saque');
-        toast('success', 'Saque realizado!', `${valor} ${moeda} sacados.`);
+        toast('success', 'Saque realizado!', `${formatarMoeda(valor, moeda)} sacados.`);
         carregarDashboard();
     } catch (e) { toast('error', 'Erro no saque', e.message); }
 }
 
 async function realizarCambio() {
-    const valor   = parseFloat(document.getElementById('cambio-valor').value);
+    const valor   = lerValorMoeda('cambio-valor');
     const origem  = document.getElementById('cambio-origem').value;
     const destino = document.getElementById('cambio-destino').value;
     const chave   = document.getElementById('cambio-chave').value.trim();
@@ -345,7 +464,7 @@ async function realizarCambio() {
     try {
         await dispararRequisicao('conversoes', { moedaOrigem: origem, moedaDestino: destino, valorOrigem: valor, chavePrivada: chave });
         fecharModal('modal-cambio');
-        toast('success', 'Câmbio realizado!', `${valor} ${origem} → ${destino}`);
+        toast('success', 'Câmbio realizado!', `${formatarMoeda(valor, origem)} → ${destino}`);
         carregarDashboard();
     } catch (e) { toast('error', 'Erro no câmbio', e.message); }
 }
@@ -353,7 +472,7 @@ async function realizarCambio() {
 async function realizarTransferencia() {
     const destino = document.getElementById('transf-destino').value.trim();
     const moeda   = document.getElementById('transf-moeda').value;
-    const valor   = parseFloat(document.getElementById('transf-valor').value);
+    const valor   = lerValorMoeda('transf-valor');
     const chave   = document.getElementById('transf-chave').value.trim();
     if (!destino)             { toast('error', 'Endereço de destino obrigatório', ''); return; }
     if (!valor || valor <= 0) { toast('error', 'Valor inválido', ''); return; }
@@ -361,7 +480,7 @@ async function realizarTransferencia() {
     try {
         await dispararRequisicao('transferencias', { enderecoDestino: destino, codigoMoeda: moeda, valor, chavePrivada: chave });
         fecharModal('modal-transferencia');
-        toast('success', 'Transferência realizada!', `${valor} ${moeda} enviados.`);
+        toast('success', 'Transferência realizada!', `${formatarMoeda(valor, moeda)} enviados.`);
         carregarDashboard();
     } catch (e) { toast('error', 'Erro na transferência', e.message); }
 }
